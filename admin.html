@@ -1,0 +1,133 @@
+import supabase from "./supabase.js"
+
+let checkin=null
+let checkout=null
+
+async function init(){
+
+const house = await fetch("app/house.json").then(r=>r.json())
+const perks = await fetch("app/perks.json").then(r=>r.json())
+const contact = await fetch("app/contact.json").then(r=>r.json())
+
+const {data:priceData} = await supabase
+.from("pricing")
+.select("*")
+.eq("id",1)
+.single()
+
+title.innerText=house.name
+location.innerText=house.location
+description.innerText=house.description
+
+price.innerText=`$${priceData.price_per_person} persona/noche`
+
+perks.perks.forEach(p=>{
+let d=document.createElement("div")
+d.innerText="✓ "+p
+perksDiv.append(d)
+})
+
+buildCalendar()
+
+const {data:blocked} = await supabase
+.from("blocked_dates")
+.select("*")
+
+blocked.forEach(b=>{
+let el=document.querySelector(`[data-date="${b.date}"]`)
+if(el)el.classList.add("blocked")
+})
+
+document.querySelectorAll(".g").forEach(img=>{
+
+img.onclick=()=>{
+
+viewer.style.display="flex"
+viewerImg.src=img.src
+
+}
+
+})
+
+close.onclick=()=>viewer.style.display="none"
+
+reserve.onclick=async()=>{
+
+await supabase
+.from("reservations")
+.insert([{
+
+checkin,
+checkout,
+guests:guests.value
+
+}])
+
+alert("Reserva enviada")
+
+}
+
+whatsapp.onclick=()=>{
+
+let msg=`Reserva casa Margarita
+
+Checkin:${checkin}
+Checkout:${checkout}
+Personas:${guests.value}`
+
+window.open(`https://wa.me/${contact.whatsapp}?text=${encodeURIComponent(msg)}`)
+
+}
+
+}
+
+function buildCalendar(){
+
+const now=new Date()
+
+renderMonth(month1,now.getFullYear(),now.getMonth())
+renderMonth(month2,now.getFullYear(),now.getMonth()+1)
+
+}
+
+function renderMonth(container,year,month){
+
+const days=new Date(year,month+1,0).getDate()
+
+for(let d=1;d<=days;d++){
+
+let date=`${year}-${String(month+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`
+
+let el=document.createElement("div")
+
+el.className="day"
+
+el.innerText=d
+
+el.dataset.date=date
+
+el.onclick=()=>select(date,el)
+
+container.append(el)
+
+}
+
+}
+
+function select(date,el){
+
+if(!checkin){
+
+checkin=date
+el.classList.add("selected")
+
+}else{
+
+checkout=date
+el.classList.add("selected")
+
+}
+
+}
+
+init()
