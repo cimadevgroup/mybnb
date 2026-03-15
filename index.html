@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Casa en Playa El Ángel - Reservas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Firebase SDK (versión 9 modular) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <style>
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; padding: 1.5rem; border-radius: 1rem; max-width: 400px; width: 90%; max-height: 80vh; overflow-y: auto; }
+        .day-btn { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 9999px; cursor: pointer; }
+        .day-btn.selected { background-color: #3b82f6; color: white; }
+        .day-btn.range { background-color: #bfdbfe; }
+        .day-btn.disabled { background-color: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
+        .sticky-card { position: sticky; top: 1rem; }
+        @media (max-width: 768px) { .sticky-card { position: fixed; bottom: 0; left: 0; right: 0; top: auto; } }
+    </style>
+</head>
+<body class="bg-gray-50 pb-24 md:pb-0">
+
+<!-- Contenedor principal -->
+<div class="max-w-7xl mx-auto">
+    <!-- Carrusel (igual que antes) -->
+    <div class="relative w-full h-64 md:h-96 bg-gray-200">
+        <img id="carouselImg" src="https://picsum.photos/id/10/800/600" class="w-full h-full object-cover">
+        <button class="absolute top-4 left-4 bg-white rounded-full p-3 shadow-md"><i class="fas fa-arrow-left"></i></button>
+        <button onclick="openModal('shareModal')" class="absolute top-4 right-4 bg-white rounded-full p-3 shadow-md"><i class="fas fa-share-alt"></i></button>
+        <button onclick="toggleFav()" class="absolute top-4 right-16 bg-white rounded-full p-3 shadow-md"><i id="favIcon" class="far fa-heart"></i></button>
+        <button onclick="prevSlide()" class="absolute left-4 top-1/2 -translate-y-1/2 bg-white/70 rounded-full p-3"><i class="fas fa-chevron-left"></i></button>
+        <button onclick="nextSlide()" class="absolute right-4 top-1/2 -translate-y-1/2 bg-white/70 rounded-full p-3"><i class="fas fa-chevron-right"></i></button>
+        <div class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-sm" id="slideIndicator">1/13</div>
+    </div>
+
+    <!-- Contenido principal -->
+    <div class="px-4 py-6 md:grid md:grid-cols-3 md:gap-8">
+        <!-- Columna izquierda -->
+        <div class="md:col-span-2">
+            <h1 class="text-2xl font-bold">Casa en Playa El Ángel</h1>
+            <p class="text-gray-600">Pampatar, Venezuela</p>
+            <div class="flex gap-2 mt-2 text-sm flex-wrap">4 huéspedes · 2 hab · 2 camas · 2 baños</div>
+            
+            <!-- Ratings -->
+            <div class="flex items-center gap-4 mt-4 p-3 bg-gray-50 rounded-lg flex-wrap">
+                <span class="flex items-center"><i class="fas fa-star text-yellow-500 mr-1"></i>5.0</span>
+                <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm">Favorito entre huéspedes</span>
+                <span class="text-sm text-gray-500">128 evaluaciones</span>
+            </div>
+
+            <!-- Acerca de -->
+            <div class="mt-6">
+                <h2 class="font-semibold text-lg">Acerca de este espacio</h2>
+                <p class="text-gray-700">Casa frente a la playa... <button onclick="openModal('aboutModal')" class="text-blue-600 underline">leer más</button></p>
+            </div>
+
+            <!-- Servicios -->
+            <div class="mt-6">
+                <h2 class="font-semibold text-lg">Servicios</h2>
+                <div class="grid grid-cols-2 gap-2 mt-2">
+                    <span><i class="fas fa-utensils mr-2"></i>Cocina</span>
+                    <span><i class="fas fa-wifi mr-2"></i>WiFi</span>
+                    <span><i class="fas fa-wind mr-2"></i>Aire acondicionado</span>
+                    <span><i class="fas fa-parking mr-2"></i>Estacionamiento</span>
+                </div>
+                <button onclick="openModal('servicesModal')" class="text-blue-600 underline mt-2">Ver todos</button>
+            </div>
+
+            <!-- Fechas (abre calendario) -->
+            <div class="mt-6">
+                <h2 class="font-semibold text-lg">Fechas disponibles</h2>
+                <button onclick="openModal('calendarModal')" class="mt-2 border px-4 py-2 rounded-lg w-full text-left bg-white" id="datesDisplay">
+                    Seleccionar fechas
+                </button>
+            </div>
+
+            <!-- Reseñas -->
+            <div class="mt-8">
+                <h2 class="font-semibold text-lg mb-4">Reseñas</h2>
+                <div class="grid gap-4">
+                    <div class="border p-4 rounded-lg flex gap-3"><img src="https://picsum.photos/id/64/50/50" class="w-10 h-10 rounded-full"><div><p class="font-medium">María</p><p class="text-sm text-gray-500">Marzo 2025</p><p class="mt-1">Hermosa casa</p></div></div>
+                    <div class="border p-4 rounded-lg flex gap-3"><img src="https://picsum.photos/id/65/50/50" class="w-10 h-10 rounded-full"><div><p class="font-medium">José</p><p class="text-sm text-gray-500">Febrero 2025</p><p class="mt-1">Ubicación perfecta</p></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tarjeta de reserva sticky -->
+        <div class="sticky-card mt-6 md:mt-0 z-40">
+            <div class="bg-white border rounded-xl shadow-lg p-6">
+                <div class="flex justify-between items-center">
+                    <span class="text-2xl font-bold">$31.04</span>
+                    <span class="text-gray-600">/ noche</span>
+                </div>
+                <!-- Fechas seleccionadas (resumen) -->
+                <div class="mt-4 border rounded-lg p-3 bg-gray-50" id="selectedDatesSummary">
+                    No hay fechas seleccionadas
+                </div>
+                <!-- Huéspedes -->
+                <div class="mt-4 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span>Adultos</span>
+                        <input type="number" id="adults" min="1" value="2" class="w-16 border rounded p-1 text-center" onchange="updateTotal()">
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span>Niños</span>
+                        <input type="number" id="children" min="0" value="0" class="w-16 border rounded p-1 text-center" onchange="updateTotal()">
+                    </div>
+                </div>
+                <!-- Botón reservar -->
+                <button onclick="reserve()" class="mt-6 w-full bg-gradient-to-r from-pink-500 to-rose-500 text-white py-3 rounded-lg font-semibold">
+                    Reservar
+                </button>
+                <!-- Detalle total (se actualiza dinámicamente) -->
+                <div class="mt-4 text-sm" id="totalDetail">
+                    <div class="flex justify-between"><span>Selecciona fechas</span><span></span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODALES (Compartir, Acerca de, Servicios) igual que antes -->
+<div id="shareModal" class="modal"><div class="modal-content"><span class="float-right text-2xl cursor-pointer" onclick="closeModal('shareModal')">&times;</span><h3 class="text-lg font-bold mb-4">Compartir</h3><div class="flex gap-4 justify-around text-3xl"><i class="fab fa-whatsapp text-green-600"></i><i class="fab fa-twitter text-blue-400"></i><i class="fab fa-facebook text-blue-800"></i></div></div></div>
+<div id="aboutModal" class="modal"><div class="modal-content"><span class="float-right text-2xl cursor-pointer" onclick="closeModal('aboutModal')">&times;</span><h3 class="text-lg font-bold mb-4">Acerca de este espacio</h3><p>Casa amplia con vista al mar, cocina equipada, aire acondicionado y terraza. Ideal para familias.</p></div></div>
+<div id="servicesModal" class="modal"><div class="modal-content"><span class="float-right text-2xl cursor-pointer" onclick="closeModal('servicesModal')">&times;</span><h3 class="text-lg font-bold mb-4">Todos los servicios</h3><ul class="grid grid-cols-2 gap-2"><li><i class="fas fa-utensils mr-2"></i>Cocina</li><li><i class="fas fa-wifi mr-2"></i>WiFi</li><li><i class="fas fa-laptop mr-2"></i>Zona trabajo</li><li><i class="fas fa-parking mr-2"></i>Estacionamiento</li><li><i class="fas fa-dog mr-2"></i>Mascotas</li><li><i class="fas fa-wind mr-2"></i>Aire acond.</li><li><i class="fas fa-tv mr-2"></i>TV</li><li><i class="fas fa-swimmer mr-2"></i>Piscina</li></ul></div></div>
+
+<!-- MODAL CALENDARIO (con fechas bloqueadas desde Firebase) -->
+<div id="calendarModal" class="modal">
+    <div class="modal-content">
+        <span class="float-right text-2xl cursor-pointer" onclick="closeModal('calendarModal')">&times;</span>
+        <h3 class="text-lg font-bold mb-4">Selecciona fechas</h3>
+        <div class="grid grid-cols-7 gap-1 text-center mb-2">
+            <div class="font-semibold">D</div><div>L</div><div>M</div><div>M</div><div>J</div><div>V</div><div>S</div>
+        </div>
+        <div id="calendarGrid" class="grid grid-cols-7 gap-1 text-center">
+            <!-- Se llena con JS -->
+        </div>
+        <div class="mt-4 text-sm" id="calendarSelected"></div>
+        <button onclick="confirmDates()" class="mt-4 bg-blue-500 text-white p-2 rounded w-full">Aceptar</button>
+    </div>
+</div>
+
+<footer class="text-center text-gray-500 text-sm py-4">© 2025 Casa en Playa El Ángel</footer>
+
+<script>
+    // ================= CONFIGURACIÓN DE FIREBASE =================
+    // Reemplaza con tu propia configuración (la obtienes de Firebase)
+    const firebaseConfig = {
+        apiKey: "AIzaSy...",
+        authDomain: "tu-proyecto.firebaseapp.com",
+        projectId: "tu-proyecto",
+        storageBucket: "tu-proyecto.appspot.com",
+        messagingSenderId: "123456789",
+        appId: "1:123456789:web:abc123"
+    };
+    // Inicializar Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // ================= VARIABLES GLOBALES =================
+    let currentSlide = 1;
+    let isFavorite = false;
+    let checkIn = null;
+    let checkOut = null;
+    const pricePerNight = 31.04;
+    let occupiedDates = []; // Array de fechas ocupadas (como strings "YYYY-MM-DD")
+
+    // ================= CARGAR RESERVAS EXISTENTES =================
+    async function loadReservations() {
+        try {
+            const snapshot = await db.collection('reservas').get();
+            occupiedDates = []; // limpiar
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                // Suponemos que cada reserva tiene checkIn y checkOut (timestamps)
+                if (data.checkIn && data.checkOut) {
+                    const start = data.checkIn.toDate();
+                    const end = data.checkOut.toDate();
+                    // Marcar todos los días entre start y end (incluyendo start, excluyendo end)
+                    let current = new Date(start);
+                    while (current < end) {
+                        const dateStr = formatDateKey(current);
+                        occupiedDates.push(dateStr);
+                        current.setDate(current.getDate() + 1);
+                    }
+                }
+            });
+            console.log('Fechas ocupadas:', occupiedDates);
+            // Refrescar calendario si está abierto
+            if (document.getElementById('calendarModal').classList.contains('active')) {
+                buildCalendar();
+            }
+        } catch (error) {
+            console.error('Error cargando reservas:', error);
+        }
+    }
+
+    // Formato "YYYY-MM-DD" para comparar fechas
+    function formatDateKey(date) {
+        const d = new Date(date);
+        const year = d.getFullYear();
+        const month = (d.getMonth() + 1).toString().padStart(2, '0');
+        const day = d.getDate().toString().padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    // ================= INICIALIZACIÓN =================
+    window.onload = function() {
+        updateCarousel();
+        loadReservations(); // Cargar reservas desde Firebase
+    };
+
+    // ================= CARRUSEL =================
+    function prevSlide() { currentSlide = currentSlide === 1 ? 13 : currentSlide - 1; updateCarousel(); }
+    function nextSlide() { currentSlide = currentSlide === 13 ? 1 : currentSlide + 1; updateCarousel(); }
+    function updateCarousel() {
+        document.getElementById('carouselImg').src = `https://picsum.photos/id/${9+currentSlide}/800/600`;
+        document.getElementById('slideIndicator').innerText = `${currentSlide}/13`;
+    }
+    function toggleFav() {
+        isFavorite = !isFavorite;
+        const icon = document.getElementById('favIcon');
+        if(isFavorite) { icon.classList.remove('far'); icon.classList.add('fas', 'text-red-500'); }
+        else { icon.classList.remove('fas', 'text-red-500'); icon.classList.add('far'); }
+    }
+
+    // ================= MODALES =================
+    function openModal(id) { 
+        document.getElementById(id).classList.add('active'); 
+        if (id === 'calendarModal') {
+            buildCalendar(); // cada vez que se abre, reconstruir
+        }
+    }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+    window.onclick = (e) => { if(e.target.classList.contains('modal')) e.target.classList.remove('active'); };
+
+    // ================= CALENDARIO CON FECHAS BLOQUEADAS =================
+    function buildCalendar() {
+        const grid = document.getElementById('calendarGrid');
+        if (!grid) return;
+        // Días de abril 2025 (1-30)
+        let html = '';
+        // Ajuste: abril 2025 empieza martes (índice 2, siendo domingo=0)
+        for(let i=0; i<2; i++) html += '<div></div>'; // espacios para lunes y martes? (mejor simplificar)
+        // Realmente para que coincida, abril 1 es martes, necesitamos 2 espacios (domingo y lunes) para que el 1 caiga en martes.
+        for(let day=1; day<=30; day++) {
+            const date = new Date(2025, 3, day);
+            const dateKey = formatDateKey(date);
+            const isOccupied = occupiedDates.includes(dateKey);
+            const isSelected = (checkIn && dateKey === formatDateKey(checkIn)) || (checkOut && dateKey === formatDateKey(checkOut));
+            const inRange = checkIn && checkOut && date > checkIn && date < checkOut;
+            
+            let classes = 'day-btn';
+            if (isOccupied) classes += ' disabled';
+            if (isSelected) classes += ' selected';
+            else if (inRange) classes += ' range';
+            
+            html += `<div class="${classes}" onclick="selectDate(${day})" ${isOccupied ? 'data-disabled="true"' : ''}>${day}</div>`;
+        }
+        grid.innerHTML = html;
+        updateCalendarSelectedText();
+    }
+
+    function selectDate(day) {
+        // No permitir seleccionar días ocupados
+        const date = new Date(2025, 3, day);
+        const dateKey = formatDateKey(date);
+        if (occupiedDates.includes(dateKey)) {
+            alert('Esta fecha ya está reservada');
+            return;
+        }
+
+        if (!checkIn || (checkIn && checkOut)) {
+            // Iniciar nuevo rango
+            checkIn = date;
+            checkOut = null;
+        } else if (date > checkIn) {
+            // Verificar que no haya días ocupados en el medio
+            let current = new Date(checkIn);
+            current.setDate(current.getDate() + 1);
+            let hasOccupied = false;
+            while (current <= date) {
+                if (occupiedDates.includes(formatDateKey(current))) {
+                    hasOccupied = true;
+                    break;
+                }
+                current.setDate(current.getDate() + 1);
+            }
+            if (hasOccupied) {
+                alert('Hay fechas ocupadas en medio');
+                return;
+            }
+            checkOut = date;
+        } else {
+            checkIn = date;
+            checkOut = null;
+        }
+        buildCalendar();
+        updateDatesDisplay();
+    }
+
+    function confirmDates() {
+        if (!checkIn || !checkOut) {
+            alert('Selecciona entrada y salida');
+            return;
+        }
+        closeModal('calendarModal');
+        updateDatesDisplay();
+    }
+
+    function updateDatesDisplay() {
+        if (!checkIn || !checkOut) {
+            document.getElementById('datesDisplay').innerText = 'Seleccionar fechas';
+            document.getElementById('selectedDatesSummary').innerText = 'No hay fechas seleccionadas';
+            document.getElementById('totalDetail').innerHTML = '<div class="flex justify-between"><span>Selecciona fechas</span><span></span></div>';
+            return;
+        }
+        const options = { day: 'numeric', month: 'short' };
+        const inStr = checkIn.toLocaleDateString('es', options).replace('.','');
+        const outStr = checkOut.toLocaleDateString('es', options).replace('.','');
+        document.getElementById('datesDisplay').innerText = `${inStr} - ${outStr} 2025`;
+        document.getElementById('selectedDatesSummary').innerText = `${inStr} → ${outStr} 2025`;
+        updateTotal();
+    }
+
+    function updateCalendarSelectedText() {
+        const el = document.getElementById('calendarSelected');
+        if (!el) return;
+        if (checkIn && checkOut) {
+            el.innerText = `Entrada: ${checkIn.getDate()}/4/2025 - Salida: ${checkOut.getDate()}/4/2025`;
+        } else if (checkIn) {
+            el.innerText = `Entrada: ${checkIn.getDate()}/4/2025 - Selecciona salida`;
+        } else {
+            el.innerText = 'Selecciona entrada';
+        }
+    }
+
+    // ================= CÁLCULO DE TOTAL =================
+    function updateTotal() {
+        if (!checkIn || !checkOut) return;
+        const nights = Math.round((checkOut - checkIn) / (1000*60*60*24));
+        const adults = parseInt(document.getElementById('adults').value) || 1;
+        const children = parseInt(document.getElementById('children').value) || 0;
+        const total = nights * pricePerNight;
+        document.getElementById('totalDetail').innerHTML = `
+            <div class="flex justify-between"><span>$${pricePerNight.toFixed(2)} x ${nights} noches</span><span>$${total.toFixed(2)}</span></div>
+            <div class="border-t mt-2 pt-2 font-bold flex justify-between"><span>Total</span><span>$${total.toFixed(2)}</span></div>
+        `;
+    }
+
+    // ================= RESERVA (GUARDAR EN FIREBASE Y WHATSAPP) =================
+    async function reserve() {
+        if (!checkIn || !checkOut) {
+            alert('Selecciona fechas de entrada y salida');
+            return;
+        }
+
+        const nights = Math.round((checkOut - checkIn) / (1000*60*60*24));
+        const adults = parseInt(document.getElementById('adults').value) || 1;
+        const children = parseInt(document.getElementById('children').value) || 0;
+        const total = nights * pricePerNight;
+
+        // Verificar que las fechas sigan disponibles (por si alguien reservó mientras)
+        const dateKeyIn = formatDateKey(checkIn);
+        const dateKeyOut = formatDateKey(checkOut);
+        // Revisar si alguna fecha en el rango está ocupada
+        let current = new Date(checkIn);
+        let hasConflict = false;
+        while (current <= checkOut) {
+            if (occupiedDates.includes(formatDateKey(current))) {
+                hasConflict = true;
+                break;
+            }
+            current.setDate(current.getDate() + 1);
+        }
+        if (hasConflict) {
+            alert('Lo sentimos, algunas fechas ya no están disponibles. Por favor recarga y elige otras.');
+            return;
+        }
+
+        // Guardar en Firebase
+        try {
+            await db.collection('reservas').add({
+                checkIn: firebase.firestore.Timestamp.fromDate(checkIn),
+                checkOut: firebase.firestore.Timestamp.fromDate(checkOut),
+                adultos: adults,
+                niños: children,
+                total: total,
+                creado: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            console.log('Reserva guardada en Firebase');
+
+            // Actualizar ocupadas localmente
+            let newOccupied = [];
+            current = new Date(checkIn);
+            while (current <= checkOut) {
+                newOccupied.push(formatDateKey(current));
+                current.setDate(current.getDate() + 1);
+            }
+            occupiedDates = [...occupiedDates, ...newOccupied];
+
+            // Abrir WhatsApp
+            const formatDate = (d) => {
+                const day = d.getDate().toString().padStart(2,'0');
+                const month = (d.getMonth()+1).toString().padStart(2,'0');
+                return `${day}/${month}/2025`;
+            };
+            const msg = `Hola, quiero reservar la Casa en Playa El Ángel del ${formatDate(checkIn)} al ${formatDate(checkOut)} para ${adults+children} personas. El total estimado es de $${total.toFixed(2)}.`;
+            window.open(`https://wa.me/584248119014?text=${encodeURIComponent(msg)}`, '_blank');
+        } catch (error) {
+            console.error('Error guardando reserva:', error);
+            alert('Error al procesar la reserva. Intenta de nuevo.');
+        }
+    }
+</script>
+</body>
+</html>
