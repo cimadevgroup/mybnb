@@ -3,418 +3,1051 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Casa en Playa El Ángel - Reservas</title>
+    <title>mybnb - Casa en Margarita</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Firebase SDK (versión 9 modular) -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000; }
-        .modal.active { display: flex; }
-        .modal-content { background: white; padding: 1.5rem; border-radius: 1rem; max-width: 400px; width: 90%; max-height: 80vh; overflow-y: auto; }
-        .day-btn { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 9999px; cursor: pointer; }
-        .day-btn.selected { background-color: #3b82f6; color: white; }
-        .day-btn.range { background-color: #bfdbfe; }
-        .day-btn.disabled { background-color: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
-        .sticky-card { position: sticky; top: 1rem; }
-        @media (max-width: 768px) { .sticky-card { position: fixed; bottom: 0; left: 0; right: 0; top: auto; } }
+        /* Estilos personalizados para el calendario y modales */
+        .calendario-dia {
+            @apply w-10 h-10 flex items-center justify-center rounded-full cursor-pointer transition;
+        }
+        .calendario-dia.ocupado {
+            @apply bg-gray-200 text-gray-400 line-through cursor-not-allowed;
+        }
+        .calendario-dia.seleccionado {
+            @apply bg-black text-white;
+        }
+        .calendario-dia.rango {
+            @apply bg-gray-300;
+        }
+        .modal-overlay {
+            background-color: rgba(0,0,0,0.5);
+        }
+        /* Estilo para la tarjeta de reserva fija en móvil */
+        @media (max-width: 768px) {
+            .reserva-sticky-mobile {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: white;
+                box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+                padding: 1rem;
+                z-index: 40;
+                border-top-left-radius: 1rem;
+                border-top-right-radius: 1rem;
+            }
+        }
+        /* Transición suave para paneles */
+        .tab-panel {
+            transition: opacity 0.2s;
+        }
     </style>
 </head>
-<body class="bg-gray-50 pb-24 md:pb-0">
+<body class="bg-gray-50 font-sans antialiased">
 
-<!-- Contenedor principal -->
-<div class="max-w-7xl mx-auto">
-    <!-- Carrusel (igual que antes) -->
-    <div class="relative w-full h-64 md:h-96 bg-gray-200">
-        <img id="carouselImg" src="https://picsum.photos/id/10/800/600" class="w-full h-full object-cover">
-        <button class="absolute top-4 left-4 bg-white rounded-full p-3 shadow-md"><i class="fas fa-arrow-left"></i></button>
-        <button onclick="openModal('shareModal')" class="absolute top-4 right-4 bg-white rounded-full p-3 shadow-md"><i class="fas fa-share-alt"></i></button>
-        <button onclick="toggleFav()" class="absolute top-4 right-16 bg-white rounded-full p-3 shadow-md"><i id="favIcon" class="far fa-heart"></i></button>
-        <button onclick="prevSlide()" class="absolute left-4 top-1/2 -translate-y-1/2 bg-white/70 rounded-full p-3"><i class="fas fa-chevron-left"></i></button>
-        <button onclick="nextSlide()" class="absolute right-4 top-1/2 -translate-y-1/2 bg-white/70 rounded-full p-3"><i class="fas fa-chevron-right"></i></button>
-        <div class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-sm" id="slideIndicator">1/13</div>
+<div id="app" class="relative min-h-screen">
+
+    <!-- ==================== VISTA PÚBLICA (visible cuando no admin) ==================== -->
+    <div id="publicView" class="pb-24 md:pb-0">
+        <!-- HEADER -->
+        <header class="bg-white shadow-sm sticky top-0 z-30">
+            <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-gray-800">mybnb</h1>
+                <div class="flex gap-3 items-center">
+                    <button id="authBtn" class="bg-black text-white px-4 py-2 rounded-full text-sm hover:bg-gray-800 transition">
+                        <i class="fas fa-user mr-1"></i> Iniciar sesión
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- CONTENIDO PRINCIPAL -->
+        <main class="container mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Columna izquierda: info de la propiedad -->
+            <div class="md:col-span-2">
+                <!-- Carrusel de imágenes -->
+                <div id="carrusel" class="relative rounded-2xl overflow-hidden mb-6">
+                    <div class="relative h-96 md:h-[500px] bg-gray-200">
+                        <img id="carruselImg" src="https://via.placeholder.com/1200x800?text=Cargando..." alt="Propiedad" class="w-full h-full object-cover">
+                        <div class="absolute inset-0 flex items-center justify-between px-4">
+                            <button id="carruselPrev" class="bg-white/80 hover:bg-white rounded-full w-10 h-10 flex items-center justify-center shadow-md"><i class="fas fa-chevron-left"></i></button>
+                            <button id="carruselNext" class="bg-white/80 hover:bg-white rounded-full w-10 h-10 flex items-center justify-center shadow-md"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                        <div class="absolute bottom-4 right-4 bg-black/70 text-white px-3 py-1 rounded-full text-sm" id="carruselIndicador">1/1</div>
+                        <div class="absolute top-4 left-4 flex gap-2">
+                            <button class="bg-white/80 hover:bg-white rounded-full w-10 h-10 flex items-center justify-center shadow-md"><i class="fas fa-arrow-left"></i></button>
+                            <button class="bg-white/80 hover:bg-white rounded-full w-10 h-10 flex items-center justify-center shadow-md"><i class="fas fa-share-alt"></i></button>
+                            <button class="bg-white/80 hover:bg-white rounded-full w-10 h-10 flex items-center justify-center shadow-md"><i class="far fa-heart"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Título y calificación -->
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h2 class="text-2xl font-semibold" id="propiedadNombre">Casa en Pampatar</h2>
+                        <p class="text-gray-600" id="propiedadUbicacion">Isla de Margarita, Venezuela</p>
+                    </div>
+                    <div class="text-right">
+                        <div class="flex items-center gap-1">
+                            <i class="fas fa-star text-black"></i>
+                            <span class="font-medium" id="promedioResenas">0.0</span>
+                            <span class="text-gray-500"> · <span id="totalResenas">0</span> reseñas</span>
+                        </div>
+                        <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full mt-1 inline-block">Favorito entre huéspedes</span>
+                    </div>
+                </div>
+
+                <!-- Detalles rápidos -->
+                <div class="flex flex-wrap gap-4 text-sm text-gray-600 mb-6 border-b pb-6">
+                    <span><i class="fas fa-users mr-1"></i> <span id="propiedadCapacidad">6</span> huéspedes</span>
+                    <span><i class="fas fa-bed mr-1"></i> <span id="propiedadHabitaciones">3</span> habitaciones</span>
+                    <span><i class="fas fa-bed mr-1"></i> <span id="propiedadCamas">4</span> camas</span>
+                    <span><i class="fas fa-bath mr-1"></i> <span id="propiedadBanos">2</span> baños</span>
+                </div>
+
+                <!-- Acerca de este espacio -->
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold mb-3">Acerca de este espacio</h3>
+                    <p class="text-gray-700" id="propiedadDescripcion">Cargando descripción...</p>
+                </div>
+
+                <!-- Servicios -->
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold mb-4">Servicios</h3>
+                    <div id="listaServicios" class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <!-- se llena vía JS -->
+                    </div>
+                </div>
+
+                <!-- Fechas disponibles (modal) -->
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold mb-3">Fechas disponibles</h3>
+                    <button id="abrirCalendarioBtn" class="border rounded-lg px-6 py-3 hover:bg-gray-100 transition">
+                        <i class="far fa-calendar mr-2"></i> Revisar disponibilidad
+                    </button>
+                </div>
+
+                <!-- Reseñas -->
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold mb-4">Reseñas</h3>
+                    <div id="listaResenas" class="space-y-6">
+                        <!-- se llena vía JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Columna derecha: tarjeta de reserva sticky -->
+            <div class="md:col-span-1">
+                <div id="reservaCard" class="bg-white rounded-2xl shadow-xl p-6 md:sticky md:top-24 border">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-2xl font-semibold">$<span id="precioNoche">100</span></span>
+                        <span class="text-gray-600">por noche</span>
+                    </div>
+                    <div id="fechasSeleccionadas" class="border rounded-lg p-3 mb-4 text-sm bg-gray-50">
+                        <span id="checkInDisplay">Selecciona fechas</span> – <span id="checkOutDisplay"></span>
+                    </div>
+                    <div class="flex gap-4 mb-4">
+                        <div class="flex-1">
+                            <label class="block text-xs text-gray-500">Adultos</label>
+                            <select id="adultosSelect" class="w-full border-b py-2">
+                                <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option>
+                            </select>
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-xs text-gray-500">Niños</label>
+                            <select id="ninosSelect" class="w-full border-b py-2">
+                                <option>0</option><option>1</option><option>2</option><option>3</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex justify-between text-sm mb-4">
+                        <span>$<span id="precioNocheCalc">100</span> x <span id="nochesCount">0</span> noches</span>
+                        <span>$<span id="subtotal">0</span></span>
+                    </div>
+                    <div class="flex justify-between font-semibold text-lg mb-6">
+                        <span>Total</span>
+                        <span>$<span id="total">0</span></span>
+                    </div>
+                    <button id="reservarBtn" class="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 transition disabled:bg-gray-300 disabled:cursor-not-allowed">
+                        Reservar
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- FOOTER (con área de long-press) -->
+        <footer id="footer" class="bg-white border-t mt-12 py-6 text-center text-gray-500 text-sm">
+            <p>© 2025 mybnb - Todos los derechos reservados</p>
+            <p class="text-xs mt-2">Presiona y mantén presionado para acceder al panel</p>
+        </footer>
     </div>
 
-    <!-- Contenido principal -->
-    <div class="px-4 py-6 md:grid md:grid-cols-3 md:gap-8">
-        <!-- Columna izquierda -->
-        <div class="md:col-span-2">
-            <h1 class="text-2xl font-bold">Casa en Playa El Ángel</h1>
-            <p class="text-gray-600">Pampatar, Venezuela</p>
-            <div class="flex gap-2 mt-2 text-sm flex-wrap">4 huéspedes · 2 hab · 2 camas · 2 baños</div>
-            
-            <!-- Ratings -->
-            <div class="flex items-center gap-4 mt-4 p-3 bg-gray-50 rounded-lg flex-wrap">
-                <span class="flex items-center"><i class="fas fa-star text-yellow-500 mr-1"></i>5.0</span>
-                <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm">Favorito entre huéspedes</span>
-                <span class="text-sm text-gray-500">128 evaluaciones</span>
-            </div>
-
-            <!-- Acerca de -->
-            <div class="mt-6">
-                <h2 class="font-semibold text-lg">Acerca de este espacio</h2>
-                <p class="text-gray-700">Casa frente a la playa... <button onclick="openModal('aboutModal')" class="text-blue-600 underline">leer más</button></p>
-            </div>
-
-            <!-- Servicios -->
-            <div class="mt-6">
-                <h2 class="font-semibold text-lg">Servicios</h2>
-                <div class="grid grid-cols-2 gap-2 mt-2">
-                    <span><i class="fas fa-utensils mr-2"></i>Cocina</span>
-                    <span><i class="fas fa-wifi mr-2"></i>WiFi</span>
-                    <span><i class="fas fa-wind mr-2"></i>Aire acondicionado</span>
-                    <span><i class="fas fa-parking mr-2"></i>Estacionamiento</span>
-                </div>
-                <button onclick="openModal('servicesModal')" class="text-blue-600 underline mt-2">Ver todos</button>
-            </div>
-
-            <!-- Fechas (abre calendario) -->
-            <div class="mt-6">
-                <h2 class="font-semibold text-lg">Fechas disponibles</h2>
-                <button onclick="openModal('calendarModal')" class="mt-2 border px-4 py-2 rounded-lg w-full text-left bg-white" id="datesDisplay">
-                    Seleccionar fechas
+    <!-- ==================== VISTA ADMIN (oculta por defecto) ==================== -->
+    <div id="adminView" class="hidden bg-gray-100 min-h-screen">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-bold">Panel de Administración</h2>
+                <button id="salirAdminBtn" class="bg-black text-white px-4 py-2 rounded-lg text-sm">
+                    <i class="fas fa-sign-out-alt mr-2"></i>Ver sitio
                 </button>
             </div>
 
-            <!-- Reseñas -->
-            <div class="mt-8">
-                <h2 class="font-semibold text-lg mb-4">Reseñas</h2>
-                <div class="grid gap-4">
-                    <div class="border p-4 rounded-lg flex gap-3"><img src="https://picsum.photos/id/64/50/50" class="w-10 h-10 rounded-full"><div><p class="font-medium">María</p><p class="text-sm text-gray-500">Marzo 2025</p><p class="mt-1">Hermosa casa</p></div></div>
-                    <div class="border p-4 rounded-lg flex gap-3"><img src="https://picsum.photos/id/65/50/50" class="w-10 h-10 rounded-full"><div><p class="font-medium">José</p><p class="text-sm text-gray-500">Febrero 2025</p><p class="mt-1">Ubicación perfecta</p></div></div>
+            <!-- Tabs -->
+            <div class="border-b border-gray-300 mb-6">
+                <nav class="flex flex-wrap gap-4">
+                    <button data-tab="basico" class="tab-btn px-4 py-2 font-medium text-black border-b-2 border-black">Básico</button>
+                    <button data-tab="imagenes" class="tab-btn px-4 py-2 font-medium text-gray-500">Imágenes</button>
+                    <button data-tab="servicios" class="tab-btn px-4 py-2 font-medium text-gray-500">Servicios</button>
+                    <button data-tab="reservas" class="tab-btn px-4 py-2 font-medium text-gray-500">Reservas</button>
+                    <button data-tab="resenas" class="tab-btn px-4 py-2 font-medium text-gray-500">Reseñas</button>
+                    <button data-tab="bloqueos" class="tab-btn px-4 py-2 font-medium text-gray-500">Bloqueos</button>
+                </nav>
+            </div>
+
+            <!-- Contenido de los tabs -->
+            <div id="tabBasico" class="tab-panel">
+                <form id="formBasico" class="bg-white rounded-xl p-6 shadow max-w-2xl">
+                    <!-- campos -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label>Nombre</label><input type="text" id="adminNombre" class="border p-2 w-full rounded"></div>
+                        <div><label>Ubicación</label><input type="text" id="adminUbicacion" class="border p-2 w-full rounded"></div>
+                        <div><label>Precio por noche ($)</label><input type="number" id="adminPrecio" class="border p-2 w-full rounded"></div>
+                        <div><label>Capacidad máx.</label><input type="number" id="adminCapacidad" class="border p-2 w-full rounded"></div>
+                        <div><label>Habitaciones</label><input type="number" id="adminHabitaciones" class="border p-2 w-full rounded"></div>
+                        <div><label>Camas</label><input type="number" id="adminCamas" class="border p-2 w-full rounded"></div>
+                        <div><label>Baños</label><input type="number" id="adminBanos" class="border p-2 w-full rounded"></div>
+                        <div class="col-span-2"><label>Descripción</label><textarea id="adminDescripcion" rows="4" class="border p-2 w-full rounded"></textarea></div>
+                        <div class="col-span-2 flex items-center gap-2"><input type="checkbox" id="adminActiva"> <label>Propiedad activa</label></div>
+                    </div>
+                    <button type="submit" class="mt-4 bg-black text-white px-6 py-2 rounded-lg">Guardar cambios</button>
+                </form>
+            </div>
+
+            <div id="tabImagenes" class="tab-panel hidden">
+                <div class="bg-white rounded-xl p-6 shadow">
+                    <h3 class="font-semibold mb-4">Subir nuevas imágenes</h3>
+                    <input type="file" id="uploadImagenes" multiple accept="image/*" class="mb-4">
+                    <button id="subirImagenesBtn" class="bg-black text-white px-4 py-2 rounded-lg mb-6">Subir seleccionadas</button>
+                    <div id="galeriaAdmin" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <!-- se llena con JS -->
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Tarjeta de reserva sticky -->
-        <div class="sticky-card mt-6 md:mt-0 z-40">
-            <div class="bg-white border rounded-xl shadow-lg p-6">
-                <div class="flex justify-between items-center">
-                    <span class="text-2xl font-bold">$31.04</span>
-                    <span class="text-gray-600">/ noche</span>
-                </div>
-                <!-- Fechas seleccionadas (resumen) -->
-                <div class="mt-4 border rounded-lg p-3 bg-gray-50" id="selectedDatesSummary">
-                    No hay fechas seleccionadas
-                </div>
-                <!-- Huéspedes -->
-                <div class="mt-4 space-y-3">
-                    <div class="flex justify-between items-center">
-                        <span>Adultos</span>
-                        <input type="number" id="adults" min="1" value="2" class="w-16 border rounded p-1 text-center" onchange="updateTotal()">
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span>Niños</span>
-                        <input type="number" id="children" min="0" value="0" class="w-16 border rounded p-1 text-center" onchange="updateTotal()">
+            <div id="tabServicios" class="tab-panel hidden">
+                <div class="bg-white rounded-xl p-6 shadow">
+                    <h3 class="font-semibold mb-4">Servicios disponibles</h3>
+                    <div id="serviciosChecklist" class="space-y-2 mb-6"></div>
+                    <h4 class="font-medium">Añadir nuevo servicio</h4>
+                    <div class="flex gap-2 mt-2">
+                        <input type="text" id="nuevoServicioNombre" placeholder="Nombre" class="border p-2 rounded flex-1">
+                        <input type="text" id="nuevoServicioIcono" placeholder="Icono FontAwesome (ej. fas fa-wifi)" class="border p-2 rounded flex-1">
+                        <button id="crearServicioBtn" class="bg-black text-white px-4 py-2 rounded">Crear</button>
                     </div>
                 </div>
-                <!-- Botón reservar -->
-                <button onclick="reserve()" class="mt-6 w-full bg-gradient-to-r from-pink-500 to-rose-500 text-white py-3 rounded-lg font-semibold">
-                    Reservar
-                </button>
-                <!-- Detalle total (se actualiza dinámicamente) -->
-                <div class="mt-4 text-sm" id="totalDetail">
-                    <div class="flex justify-between"><span>Selecciona fechas</span><span></span></div>
+            </div>
+
+            <div id="tabReservas" class="tab-panel hidden">
+                <div class="bg-white rounded-xl p-6 shadow overflow-auto">
+                    <table class="min-w-full">
+                        <thead><tr><th>Fecha entrada</th><th>Fecha salida</th><th>Cliente</th><th>Teléfono</th><th>Total</th></tr></thead>
+                        <tbody id="tablaReservas"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="tabResenas" class="tab-panel hidden">
+                <div class="bg-white rounded-xl p-6 shadow">
+                    <div id="listaResenasAdmin" class="space-y-4"></div>
+                </div>
+            </div>
+
+            <div id="tabBloqueos" class="tab-panel hidden">
+                <div class="bg-white rounded-xl p-6 shadow">
+                    <h3 class="font-semibold mb-4">Añadir bloqueo manual</h3>
+                    <div class="flex gap-2">
+                        <input type="date" id="bloqueoFecha" class="border p-2 rounded">
+                        <input type="text" id="bloqueoMotivo" placeholder="Motivo" class="border p-2 rounded flex-1">
+                        <button id="agregarBloqueoBtn" class="bg-black text-white px-4 py-2 rounded">Agregar</button>
+                    </div>
+                    <h4 class="font-semibold mt-6 mb-2">Bloqueos existentes</h4>
+                    <div id="listaBloqueos" class="space-y-2"></div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- MODALES (Compartir, Acerca de, Servicios) igual que antes -->
-<div id="shareModal" class="modal"><div class="modal-content"><span class="float-right text-2xl cursor-pointer" onclick="closeModal('shareModal')">&times;</span><h3 class="text-lg font-bold mb-4">Compartir</h3><div class="flex gap-4 justify-around text-3xl"><i class="fab fa-whatsapp text-green-600"></i><i class="fab fa-twitter text-blue-400"></i><i class="fab fa-facebook text-blue-800"></i></div></div></div>
-<div id="aboutModal" class="modal"><div class="modal-content"><span class="float-right text-2xl cursor-pointer" onclick="closeModal('aboutModal')">&times;</span><h3 class="text-lg font-bold mb-4">Acerca de este espacio</h3><p>Casa amplia con vista al mar, cocina equipada, aire acondicionado y terraza. Ideal para familias.</p></div></div>
-<div id="servicesModal" class="modal"><div class="modal-content"><span class="float-right text-2xl cursor-pointer" onclick="closeModal('servicesModal')">&times;</span><h3 class="text-lg font-bold mb-4">Todos los servicios</h3><ul class="grid grid-cols-2 gap-2"><li><i class="fas fa-utensils mr-2"></i>Cocina</li><li><i class="fas fa-wifi mr-2"></i>WiFi</li><li><i class="fas fa-laptop mr-2"></i>Zona trabajo</li><li><i class="fas fa-parking mr-2"></i>Estacionamiento</li><li><i class="fas fa-dog mr-2"></i>Mascotas</li><li><i class="fas fa-wind mr-2"></i>Aire acond.</li><li><i class="fas fa-tv mr-2"></i>TV</li><li><i class="fas fa-swimmer mr-2"></i>Piscina</li></ul></div></div>
+    <!-- ==================== MODALES ==================== -->
+    <!-- Modal calendario -->
+    <div id="modalCalendario" class="fixed inset-0 modal-overlay hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold">Selecciona fechas</h3>
+                <button id="cerrarCalendario" class="text-gray-500"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="calendarioContainer" class="grid grid-cols-7 gap-1 text-center">
+                <!-- se genera con JS -->
+            </div>
+            <div class="flex justify-end mt-6">
+                <button id="confirmarFechas" class="bg-black text-white px-6 py-2 rounded-lg">Confirmar</button>
+            </div>
+        </div>
+    </div>
 
-<!-- MODAL CALENDARIO (con fechas bloqueadas desde Firebase) -->
-<div id="calendarModal" class="modal">
-    <div class="modal-content">
-        <span class="float-right text-2xl cursor-pointer" onclick="closeModal('calendarModal')">&times;</span>
-        <h3 class="text-lg font-bold mb-4">Selecciona fechas</h3>
-        <div class="grid grid-cols-7 gap-1 text-center mb-2">
-            <div class="font-semibold">D</div><div>L</div><div>M</div><div>M</div><div>J</div><div>V</div><div>S</div>
+    <!-- Modal autenticación / invitado -->
+    <div id="modalAuth" class="fixed inset-0 modal-overlay hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold" id="authModalTitle">Iniciar sesión</h3>
+                <button id="cerrarAuth" class="text-gray-500"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="authForm">
+                <input type="email" id="authEmail" placeholder="Email" class="border p-2 w-full rounded mb-3">
+                <input type="password" id="authPassword" placeholder="Contraseña" value="1234" class="border p-2 w-full rounded mb-3">
+                <button id="loginBtn" class="bg-black text-white px-4 py-2 w-full rounded mb-2">Iniciar sesión</button>
+                <button id="registroBtn" class="bg-gray-200 px-4 py-2 w-full rounded">Registrarse (contraseña 1234)</button>
+                <div class="my-4 text-center text-gray-500">o</div>
+                <button id="invitadoBtn" class="border border-black text-black px-4 py-2 w-full rounded">Continuar como invitado</button>
+            </div>
+            <div id="invitadoForm" class="hidden">
+                <input type="text" id="invitadoNombre" placeholder="Nombre" class="border p-2 w-full rounded mb-3">
+                <input type="text" id="invitadoApellido" placeholder="Apellido" class="border p-2 w-full rounded mb-3">
+                <input type="text" id="invitadoCedula" placeholder="Cédula" class="border p-2 w-full rounded mb-3">
+                <input type="tel" id="invitadoTelefono" placeholder="Teléfono" class="border p-2 w-full rounded mb-3">
+                <input type="email" id="invitadoEmail" placeholder="Email" class="border p-2 w-full rounded mb-3">
+                <button id="confirmarInvitado" class="bg-black text-white px-4 py-2 w-full rounded">Confirmar y reservar</button>
+            </div>
         </div>
-        <div id="calendarGrid" class="grid grid-cols-7 gap-1 text-center">
-            <!-- Se llena con JS -->
+    </div>
+
+    <!-- Modal de confirmación de reserva (simple) -->
+    <div id="modalConfirmacion" class="fixed inset-0 modal-overlay hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-full mx-4">
+            <h3 class="text-xl font-semibold mb-4">Reserva enviada</h3>
+            <p>Serás redirigido a WhatsApp para completar el mensaje.</p>
+            <button id="cerrarConfirmacion" class="mt-4 bg-black text-white px-4 py-2 w-full rounded">Aceptar</button>
         </div>
-        <div class="mt-4 text-sm" id="calendarSelected"></div>
-        <button onclick="confirmDates()" class="mt-4 bg-blue-500 text-white p-2 rounded w-full">Aceptar</button>
     </div>
 </div>
-
-<footer class="text-center text-gray-500 text-sm py-4">© 2025 Casa en Playa El Ángel</footer>
 
 <script>
-    // ================= CONFIGURACIÓN DE FIREBASE =================
-    // Reemplaza con tu propia configuración (la obtienes de Firebase)
-    const firebaseConfig = {
-        apiKey: "AIzaSy...",
-        authDomain: "tu-proyecto.firebaseapp.com",
-        projectId: "tu-proyecto",
-        storageBucket: "tu-proyecto.appspot.com",
-        messagingSenderId: "123456789",
-        appId: "1:123456789:web:abc123"
-    };
-    // Inicializar Firebase
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+    (function() {
+        // ==================== CONFIGURACIÓN SUPABASE ====================
+        const SUPABASE_URL = 'https://tu-proyecto.supabase.co'; // <-- REEMPLAZAR
+        const SUPABASE_ANON_KEY = 'tu-anon-key'; // <-- REEMPLAZAR
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // ================= VARIABLES GLOBALES =================
-    let currentSlide = 1;
-    let isFavorite = false;
-    let checkIn = null;
-    let checkOut = null;
-    const pricePerNight = 31.04;
-    let occupiedDates = []; // Array de fechas ocupadas (como strings "YYYY-MM-DD")
+        // ID de la propiedad que estamos gestionando (por ahora fijo)
+        const PROPIEDAD_ID = 1;
 
-    // ================= CARGAR RESERVAS EXISTENTES =================
-    async function loadReservations() {
-        try {
-            const snapshot = await db.collection('reservas').get();
-            occupiedDates = []; // limpiar
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                // Suponemos que cada reserva tiene checkIn y checkOut (timestamps)
-                if (data.checkIn && data.checkOut) {
-                    const start = data.checkIn.toDate();
-                    const end = data.checkOut.toDate();
-                    // Marcar todos los días entre start y end (incluyendo start, excluyendo end)
-                    let current = new Date(start);
-                    while (current < end) {
-                        const dateStr = formatDateKey(current);
-                        occupiedDates.push(dateStr);
-                        current.setDate(current.getDate() + 1);
-                    }
+        // Teléfono del anfitrión (para WhatsApp)
+        const TELEFONO_ANFITRION = '+584248119014';
+
+        // ==================== ESTADO GLOBAL ====================
+        let currentUser = null; // usuario autenticado (objeto de Supabase Auth)
+        let isAdmin = false; // modo admin activado?
+        let propiedad = {}; // datos de la propiedad
+        let imagenes = []; // lista de imágenes {id, url, orden}
+        let servicios = []; // todos los servicios con checkbox
+        let serviciosPropiedad = []; // ids de servicios de la propiedad
+        let resenas = []; // reseñas de la propiedad
+        let reservas = []; // reservas (para admin)
+        let bloqueos = []; // fechas bloqueadas
+        let fechasOcupadas = []; // combinación de reservas confirmadas + bloqueos (como strings 'YYYY-MM-DD')
+        let selectedCheckIn = null; // Date
+        let selectedCheckOut = null; // Date
+        let adultos = 2;
+        let ninos = 0;
+        let imagenesCarrusel = []; // urls
+        let currentCarruselIndex = 0;
+
+        // ==================== REFERENCIAS DOM ====================
+        const publicView = document.getElementById('publicView');
+        const adminView = document.getElementById('adminView');
+        const authBtn = document.getElementById('authBtn');
+        const footer = document.getElementById('footer');
+        const salirAdminBtn = document.getElementById('salirAdminBtn');
+
+        // ==================== FUNCIONES AUXILIARES ====================
+        function formatDate(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        function parseDate(str) {
+            return new Date(str + 'T12:00:00'); // evita problemas de zona horaria
+        }
+
+        // Mostrar notificación simple (usamos alert por simplicidad, pero se puede mejorar)
+        function notificar(mensaje, error = false) {
+            alert(mensaje);
+        }
+
+        // ==================== CARGAR DATOS DE SUPABASE ====================
+        async function cargarPropiedad() {
+            const { data, error } = await supabase.from('propiedades').select('*').eq('id', PROPIEDAD_ID).single();
+            if (error) console.error('Error cargando propiedad', error);
+            else propiedad = data;
+            actualizarUIPropiedad();
+        }
+
+        async function cargarImagenes() {
+            const { data, error } = await supabase.from('imagenes').select('*').eq('propiedad_id', PROPIEDAD_ID).order('orden');
+            if (error) console.error(error);
+            else {
+                imagenes = data;
+                imagenesCarrusel = imagenes.map(img => img.url);
+                if (imagenesCarrusel.length === 0) imagenesCarrusel = ['https://via.placeholder.com/1200x800?text=Sin+imagenes'];
+                currentCarruselIndex = 0;
+                actualizarCarrusel();
+            }
+        }
+
+        async function cargarServicios() {
+            const { data: todos, error: e1 } = await supabase.from('servicios').select('*');
+            if (e1) console.error(e1);
+            else servicios = todos;
+
+            const { data: propserv, error: e2 } = await supabase.from('propiedad_servicios').select('servicio_id').eq('propiedad_id', PROPIEDAD_ID);
+            if (e2) console.error(e2);
+            else serviciosPropiedad = propserv.map(ps => ps.servicio_id);
+
+            actualizarUIServicios();
+        }
+
+        async function cargarResenas() {
+            const { data, error } = await supabase.from('resenas').select('*').eq('propiedad_id', PROPIEDAD_ID).eq('visible', true);
+            if (error) console.error(error);
+            else {
+                resenas = data;
+                actualizarUIResenas();
+                calcularPromedio();
+            }
+        }
+
+        async function cargarReservas() {
+            const { data, error } = await supabase.from('reservas').select('*').eq('propiedad_id', PROPIEDAD_ID);
+            if (error) console.error(error);
+            else reservas = data;
+        }
+
+        async function cargarBloqueos() {
+            const { data, error } = await supabase.from('bloqueos').select('*').eq('propiedad_id', PROPIEDAD_ID);
+            if (error) console.error(error);
+            else bloqueos = data;
+            actualizarFechasOcupadas();
+        }
+
+        async function cargarTodo() {
+            await cargarPropiedad();
+            await cargarImagenes();
+            await cargarServicios();
+            await cargarResenas();
+            await cargarReservas();
+            await cargarBloqueos();
+            if (isAdmin) {
+                renderAdminPanels();
+            }
+        }
+
+        function actualizarFechasOcupadas() {
+            fechasOcupadas = [];
+            reservas.forEach(r => {
+                let start = parseDate(r.check_in);
+                let end = parseDate(r.check_out);
+                for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
+                    fechasOcupadas.push(formatDate(d));
                 }
             });
-            console.log('Fechas ocupadas:', occupiedDates);
-            // Refrescar calendario si está abierto
-            if (document.getElementById('calendarModal').classList.contains('active')) {
-                buildCalendar();
-            }
-        } catch (error) {
-            console.error('Error cargando reservas:', error);
-        }
-    }
-
-    // Formato "YYYY-MM-DD" para comparar fechas
-    function formatDateKey(date) {
-        const d = new Date(date);
-        const year = d.getFullYear();
-        const month = (d.getMonth() + 1).toString().padStart(2, '0');
-        const day = d.getDate().toString().padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    }
-
-    // ================= INICIALIZACIÓN =================
-    window.onload = function() {
-        updateCarousel();
-        loadReservations(); // Cargar reservas desde Firebase
-    };
-
-    // ================= CARRUSEL =================
-    function prevSlide() { currentSlide = currentSlide === 1 ? 13 : currentSlide - 1; updateCarousel(); }
-    function nextSlide() { currentSlide = currentSlide === 13 ? 1 : currentSlide + 1; updateCarousel(); }
-    function updateCarousel() {
-        document.getElementById('carouselImg').src = `https://picsum.photos/id/${9+currentSlide}/800/600`;
-        document.getElementById('slideIndicator').innerText = `${currentSlide}/13`;
-    }
-    function toggleFav() {
-        isFavorite = !isFavorite;
-        const icon = document.getElementById('favIcon');
-        if(isFavorite) { icon.classList.remove('far'); icon.classList.add('fas', 'text-red-500'); }
-        else { icon.classList.remove('fas', 'text-red-500'); icon.classList.add('far'); }
-    }
-
-    // ================= MODALES =================
-    function openModal(id) { 
-        document.getElementById(id).classList.add('active'); 
-        if (id === 'calendarModal') {
-            buildCalendar(); // cada vez que se abre, reconstruir
-        }
-    }
-    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
-    window.onclick = (e) => { if(e.target.classList.contains('modal')) e.target.classList.remove('active'); };
-
-    // ================= CALENDARIO CON FECHAS BLOQUEADAS =================
-    function buildCalendar() {
-        const grid = document.getElementById('calendarGrid');
-        if (!grid) return;
-        // Días de abril 2025 (1-30)
-        let html = '';
-        // Ajuste: abril 2025 empieza martes (índice 2, siendo domingo=0)
-        for(let i=0; i<2; i++) html += '<div></div>'; // espacios para lunes y martes? (mejor simplificar)
-        // Realmente para que coincida, abril 1 es martes, necesitamos 2 espacios (domingo y lunes) para que el 1 caiga en martes.
-        for(let day=1; day<=30; day++) {
-            const date = new Date(2025, 3, day);
-            const dateKey = formatDateKey(date);
-            const isOccupied = occupiedDates.includes(dateKey);
-            const isSelected = (checkIn && dateKey === formatDateKey(checkIn)) || (checkOut && dateKey === formatDateKey(checkOut));
-            const inRange = checkIn && checkOut && date > checkIn && date < checkOut;
-            
-            let classes = 'day-btn';
-            if (isOccupied) classes += ' disabled';
-            if (isSelected) classes += ' selected';
-            else if (inRange) classes += ' range';
-            
-            html += `<div class="${classes}" onclick="selectDate(${day})" ${isOccupied ? 'data-disabled="true"' : ''}>${day}</div>`;
-        }
-        grid.innerHTML = html;
-        updateCalendarSelectedText();
-    }
-
-    function selectDate(day) {
-        // No permitir seleccionar días ocupados
-        const date = new Date(2025, 3, day);
-        const dateKey = formatDateKey(date);
-        if (occupiedDates.includes(dateKey)) {
-            alert('Esta fecha ya está reservada');
-            return;
+            bloqueos.forEach(b => {
+                fechasOcupadas.push(b.fecha);
+            });
         }
 
-        if (!checkIn || (checkIn && checkOut)) {
-            // Iniciar nuevo rango
-            checkIn = date;
-            checkOut = null;
-        } else if (date > checkIn) {
-            // Verificar que no haya días ocupados en el medio
-            let current = new Date(checkIn);
-            current.setDate(current.getDate() + 1);
-            let hasOccupied = false;
-            while (current <= date) {
-                if (occupiedDates.includes(formatDateKey(current))) {
-                    hasOccupied = true;
-                    break;
+        // ==================== UI PÚBLICA ====================
+        function actualizarUIPropiedad() {
+            document.getElementById('propiedadNombre').innerText = propiedad.nombre || 'Casa en Pampatar';
+            document.getElementById('propiedadUbicacion').innerText = propiedad.ubicacion || 'Isla de Margarita';
+            document.getElementById('propiedadCapacidad').innerText = propiedad.capacidad_max || '6';
+            document.getElementById('propiedadHabitaciones').innerText = propiedad.habitaciones || '3';
+            document.getElementById('propiedadCamas').innerText = propiedad.camas || '4';
+            document.getElementById('propiedadBanos').innerText = propiedad.banos || '2';
+            document.getElementById('propiedadDescripcion').innerText = propiedad.descripcion || 'Cargando descripción...';
+            document.getElementById('precioNoche').innerText = propiedad.precio_noche || '100';
+            document.getElementById('precioNocheCalc').innerText = propiedad.precio_noche || '100';
+        }
+
+        function actualizarUIServicios() {
+            const container = document.getElementById('listaServicios');
+            container.innerHTML = '';
+            servicios.forEach(s => {
+                if (serviciosPropiedad.includes(s.id)) {
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center gap-2';
+                    div.innerHTML = `<i class="${s.icono || 'fas fa-check'} text-gray-600"></i><span>${s.nombre}</span>`;
+                    container.appendChild(div);
                 }
-                current.setDate(current.getDate() + 1);
-            }
-            if (hasOccupied) {
-                alert('Hay fechas ocupadas en medio');
+            });
+        }
+
+        function actualizarUIResenas() {
+            const container = document.getElementById('listaResenas');
+            container.innerHTML = '';
+            resenas.forEach(r => {
+                const div = document.createElement('div');
+                div.className = 'border-b pb-4';
+                div.innerHTML = `
+                    <div class="flex items-center gap-2 mb-2">
+                        <div class="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
+                            <i class="fas fa-user text-gray-500"></i>
+                        </div>
+                        <div>
+                            <p class="font-medium">${r.nombre_cliente}</p>
+                            <p class="text-sm text-gray-500">${r.fecha}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1 mb-1">
+                        ${Array.from({length:5}, (_,i) => `<i class="fas fa-star ${i<r.calificacion ? 'text-black' : 'text-gray-300'} text-sm"></i>`).join('')}
+                    </div>
+                    <p class="text-gray-700">${r.comentario}</p>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function calcularPromedio() {
+            if (resenas.length === 0) {
+                document.getElementById('promedioResenas').innerText = '0.0';
+                document.getElementById('totalResenas').innerText = '0';
                 return;
             }
-            checkOut = date;
-        } else {
-            checkIn = date;
-            checkOut = null;
-        }
-        buildCalendar();
-        updateDatesDisplay();
-    }
-
-    function confirmDates() {
-        if (!checkIn || !checkOut) {
-            alert('Selecciona entrada y salida');
-            return;
-        }
-        closeModal('calendarModal');
-        updateDatesDisplay();
-    }
-
-    function updateDatesDisplay() {
-        if (!checkIn || !checkOut) {
-            document.getElementById('datesDisplay').innerText = 'Seleccionar fechas';
-            document.getElementById('selectedDatesSummary').innerText = 'No hay fechas seleccionadas';
-            document.getElementById('totalDetail').innerHTML = '<div class="flex justify-between"><span>Selecciona fechas</span><span></span></div>';
-            return;
-        }
-        const options = { day: 'numeric', month: 'short' };
-        const inStr = checkIn.toLocaleDateString('es', options).replace('.','');
-        const outStr = checkOut.toLocaleDateString('es', options).replace('.','');
-        document.getElementById('datesDisplay').innerText = `${inStr} - ${outStr} 2025`;
-        document.getElementById('selectedDatesSummary').innerText = `${inStr} → ${outStr} 2025`;
-        updateTotal();
-    }
-
-    function updateCalendarSelectedText() {
-        const el = document.getElementById('calendarSelected');
-        if (!el) return;
-        if (checkIn && checkOut) {
-            el.innerText = `Entrada: ${checkIn.getDate()}/4/2025 - Salida: ${checkOut.getDate()}/4/2025`;
-        } else if (checkIn) {
-            el.innerText = `Entrada: ${checkIn.getDate()}/4/2025 - Selecciona salida`;
-        } else {
-            el.innerText = 'Selecciona entrada';
-        }
-    }
-
-    // ================= CÁLCULO DE TOTAL =================
-    function updateTotal() {
-        if (!checkIn || !checkOut) return;
-        const nights = Math.round((checkOut - checkIn) / (1000*60*60*24));
-        const adults = parseInt(document.getElementById('adults').value) || 1;
-        const children = parseInt(document.getElementById('children').value) || 0;
-        const total = nights * pricePerNight;
-        document.getElementById('totalDetail').innerHTML = `
-            <div class="flex justify-between"><span>$${pricePerNight.toFixed(2)} x ${nights} noches</span><span>$${total.toFixed(2)}</span></div>
-            <div class="border-t mt-2 pt-2 font-bold flex justify-between"><span>Total</span><span>$${total.toFixed(2)}</span></div>
-        `;
-    }
-
-    // ================= RESERVA (GUARDAR EN FIREBASE Y WHATSAPP) =================
-    async function reserve() {
-        if (!checkIn || !checkOut) {
-            alert('Selecciona fechas de entrada y salida');
-            return;
+            const sum = resenas.reduce((acc, r) => acc + r.calificacion, 0);
+            const avg = (sum / resenas.length).toFixed(1);
+            document.getElementById('promedioResenas').innerText = avg;
+            document.getElementById('totalResenas').innerText = resenas.length;
         }
 
-        const nights = Math.round((checkOut - checkIn) / (1000*60*60*24));
-        const adults = parseInt(document.getElementById('adults').value) || 1;
-        const children = parseInt(document.getElementById('children').value) || 0;
-        const total = nights * pricePerNight;
+        // Carrusel
+        function actualizarCarrusel() {
+            const img = document.getElementById('carruselImg');
+            img.src = imagenesCarrusel[currentCarruselIndex];
+            document.getElementById('carruselIndicador').innerText = `${currentCarruselIndex+1}/${imagenesCarrusel.length}`;
+        }
 
-        // Verificar que las fechas sigan disponibles (por si alguien reservó mientras)
-        const dateKeyIn = formatDateKey(checkIn);
-        const dateKeyOut = formatDateKey(checkOut);
-        // Revisar si alguna fecha en el rango está ocupada
-        let current = new Date(checkIn);
-        let hasConflict = false;
-        while (current <= checkOut) {
-            if (occupiedDates.includes(formatDateKey(current))) {
-                hasConflict = true;
-                break;
+        document.getElementById('carruselPrev').addEventListener('click', ()=>{
+            currentCarruselIndex = (currentCarruselIndex - 1 + imagenesCarrusel.length) % imagenesCarrusel.length;
+            actualizarCarrusel();
+        });
+        document.getElementById('carruselNext').addEventListener('click', ()=>{
+            currentCarruselIndex = (currentCarruselIndex + 1) % imagenesCarrusel.length;
+            actualizarCarrusel();
+        });
+
+        // ==================== CALENDARIO Y SELECCIÓN DE FECHAS ====================
+        const modalCalendario = document.getElementById('modalCalendario');
+        const abrirCalendarioBtn = document.getElementById('abrirCalendarioBtn');
+        const cerrarCalendario = document.getElementById('cerrarCalendario');
+        const calendarioContainer = document.getElementById('calendarioContainer');
+        const confirmarFechas = document.getElementById('confirmarFechas');
+        let currentMonth = new Date();
+        currentMonth.setDate(1);
+
+        function generarCalendario() {
+            const year = currentMonth.getFullYear();
+            const month = currentMonth.getMonth();
+            const primerDia = new Date(year, month, 1);
+            const ultimoDia = new Date(year, month+1, 0);
+            const diasEnMes = ultimoDia.getDate();
+            let html = '';
+            // Días de la semana
+            const diasSemana = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'];
+            diasSemana.forEach(d => html += `<div class="font-semibold text-sm">${d}</div>`);
+
+            // Espacios vacíos antes del primer día
+            for (let i=0; i<primerDia.getDay(); i++) html += '<div></div>';
+
+            for (let d=1; d<=diasEnMes; d++) {
+                const fecha = new Date(year, month, d);
+                const fechaStr = formatDate(fecha);
+                const ocupado = fechasOcupadas.includes(fechaStr);
+                const seleccionado = (selectedCheckIn && formatDate(selectedCheckIn) === fechaStr) || (selectedCheckOut && formatDate(selectedCheckOut) === fechaStr);
+                const enRango = selectedCheckIn && selectedCheckOut && fecha > selectedCheckIn && fecha < selectedCheckOut && !ocupado;
+                let clase = 'calendario-dia';
+                if (ocupado) clase += ' ocupado';
+                if (seleccionado) clase += ' seleccionado';
+                else if (enRango) clase += ' rango';
+                html += `<div class="${clase}" data-fecha="${fechaStr}">${d}</div>`;
             }
-            current.setDate(current.getDate() + 1);
-        }
-        if (hasConflict) {
-            alert('Lo sentimos, algunas fechas ya no están disponibles. Por favor recarga y elige otras.');
-            return;
-        }
+            calendarioContainer.innerHTML = html;
 
-        // Guardar en Firebase
-        try {
-            await db.collection('reservas').add({
-                checkIn: firebase.firestore.Timestamp.fromDate(checkIn),
-                checkOut: firebase.firestore.Timestamp.fromDate(checkOut),
-                adultos: adults,
-                niños: children,
-                total: total,
-                creado: firebase.firestore.FieldValue.serverTimestamp()
+            // Event listeners a los días
+            document.querySelectorAll('.calendario-dia:not(.ocupado)').forEach(el => {
+                el.addEventListener('click', (e) => {
+                    const fechaStr = e.target.dataset.fecha;
+                    const fecha = parseDate(fechaStr);
+                    if (!selectedCheckIn || (selectedCheckIn && selectedCheckOut)) {
+                        // empezar nueva selección
+                        selectedCheckIn = fecha;
+                        selectedCheckOut = null;
+                    } else if (selectedCheckIn && !selectedCheckOut) {
+                        if (fecha <= selectedCheckIn) {
+                            selectedCheckIn = fecha;
+                        } else {
+                            // Verificar que no haya ocupados en medio
+                            let hayOcupado = false;
+                            for (let d = new Date(selectedCheckIn); d <= fecha; d.setDate(d.getDate()+1)) {
+                                if (fechasOcupadas.includes(formatDate(d))) {
+                                    hayOcupado = true;
+                                    break;
+                                }
+                            }
+                            if (hayOcupado) {
+                                notificar('Hay fechas ocupadas en el medio', true);
+                            } else {
+                                selectedCheckOut = fecha;
+                            }
+                        }
+                    }
+                    generarCalendario(); // redibujar
+                    actualizarResumenFechas();
+                });
             });
-            console.log('Reserva guardada en Firebase');
+        }
 
-            // Actualizar ocupadas localmente
-            let newOccupied = [];
-            current = new Date(checkIn);
-            while (current <= checkOut) {
-                newOccupied.push(formatDateKey(current));
-                current.setDate(current.getDate() + 1);
+        function actualizarResumenFechas() {
+            if (selectedCheckIn) {
+                document.getElementById('checkInDisplay').innerText = selectedCheckIn.toLocaleDateString();
+            } else {
+                document.getElementById('checkInDisplay').innerText = 'Selecciona fechas';
             }
-            occupiedDates = [...occupiedDates, ...newOccupied];
+            if (selectedCheckOut) {
+                document.getElementById('checkOutDisplay').innerText = selectedCheckOut.toLocaleDateString();
+            } else {
+                document.getElementById('checkOutDisplay').innerText = '';
+            }
+            calcularTotal();
+        }
+
+        function calcularTotal() {
+            if (selectedCheckIn && selectedCheckOut) {
+                const noches = Math.round((selectedCheckOut - selectedCheckIn) / (1000*60*60*24));
+                document.getElementById('nochesCount').innerText = noches;
+                const precio = propiedad.precio_noche || 100;
+                const subtotal = noches * precio;
+                document.getElementById('subtotal').innerText = subtotal;
+                document.getElementById('total').innerText = subtotal; // sin limpieza? según mensaje: limpieza 30$ pago único, pero no lo incluimos en el cálculo? Lo dejamos simple.
+            } else {
+                document.getElementById('nochesCount').innerText = '0';
+                document.getElementById('subtotal').innerText = '0';
+                document.getElementById('total').innerText = '0';
+            }
+        }
+
+        abrirCalendarioBtn.addEventListener('click', ()=>{
+            modalCalendario.classList.remove('hidden');
+            modalCalendario.classList.add('flex');
+            generarCalendario();
+        });
+        cerrarCalendario.addEventListener('click', ()=>{
+            modalCalendario.classList.add('hidden');
+        });
+        confirmarFechas.addEventListener('click', ()=>{
+            modalCalendario.classList.add('hidden');
+            actualizarResumenFechas();
+        });
+
+        // ==================== AUTENTICACIÓN Y MODALES ====================
+        const modalAuth = document.getElementById('modalAuth');
+        const authForm = document.getElementById('authForm');
+        const invitadoForm = document.getElementById('invitadoForm');
+        const loginBtn = document.getElementById('loginBtn');
+        const registroBtn = document.getElementById('registroBtn');
+        const invitadoBtn = document.getElementById('invitadoBtn');
+        const cerrarAuth = document.getElementById('cerrarAuth');
+        const confirmarInvitado = document.getElementById('confirmarInvitado');
+
+        authBtn.addEventListener('click', ()=>{
+            modalAuth.classList.remove('hidden');
+            modalAuth.classList.add('flex');
+            authForm.classList.remove('hidden');
+            invitadoForm.classList.add('hidden');
+        });
+
+        cerrarAuth.addEventListener('click', ()=> modalAuth.classList.add('hidden'));
+
+        loginBtn.addEventListener('click', async ()=>{
+            const email = document.getElementById('authEmail').value;
+            const password = document.getElementById('authPassword').value;
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) {
+                notificar('Error: ' + error.message, true);
+            } else {
+                currentUser = data.user;
+                notificar('Sesión iniciada');
+                modalAuth.classList.add('hidden');
+                // Recargar datos si es necesario? No, pero actualizar UI de botón
+                authBtn.innerHTML = '<i class="fas fa-user mr-1"></i> ' + (currentUser.email || 'Usuario');
+            }
+        });
+
+        registroBtn.addEventListener('click', async ()=>{
+            const email = document.getElementById('authEmail').value;
+            if (!email) { notificar('Ingresa un email', true); return; }
+            const password = '1234';
+            const { data, error } = await supabase.auth.signUp({ email, password });
+            if (error) {
+                notificar('Error: ' + error.message, true);
+            } else {
+                currentUser = data.user;
+                // Crear perfil vacío (luego se completará con datos al reservar)
+                await supabase.from('perfiles').insert({ id: currentUser.id, nombre: '', apellido: '', cedula: '', telefono: '' });
+                notificar('Registro exitoso. Tu contraseña es 1234');
+                modalAuth.classList.add('hidden');
+                authBtn.innerHTML = '<i class="fas fa-user mr-1"></i> ' + currentUser.email;
+            }
+        });
+
+        invitadoBtn.addEventListener('click', ()=>{
+            authForm.classList.add('hidden');
+            invitadoForm.classList.remove('hidden');
+        });
+
+        // Al confirmar invitado, se guardan los datos y se procede a reservar
+        confirmarInvitado.addEventListener('click', async ()=>{
+            const nombre = document.getElementById('invitadoNombre').value;
+            const apellido = document.getElementById('invitadoApellido').value;
+            const cedula = document.getElementById('invitadoCedula').value;
+            const telefono = document.getElementById('invitadoTelefono').value;
+            const email = document.getElementById('invitadoEmail').value;
+            if (!nombre || !apellido || !cedula || !telefono || !email) {
+                notificar('Todos los campos son obligatorios', true);
+                return;
+            }
+            // Proceder a reservar con datos de invitado
+            await procesarReserva({ nombre, apellido, cedula, telefono, email, usuario_id: null });
+            modalAuth.classList.add('hidden');
+        });
+
+        // ==================== PROCESO DE RESERVA ====================
+        document.getElementById('reservarBtn').addEventListener('click', async ()=>{
+            if (!selectedCheckIn || !selectedCheckOut) {
+                notificar('Selecciona fechas de entrada y salida', true);
+                return;
+            }
+            // Verificar disponibilidad nuevamente
+            const checkInStr = formatDate(selectedCheckIn);
+            const checkOutStr = formatDate(selectedCheckOut);
+            // Comprobar si alguna fecha en el rango está ocupada
+            let ocupado = false;
+            for (let d = new Date(selectedCheckIn); d < selectedCheckOut; d.setDate(d.getDate()+1)) {
+                if (fechasOcupadas.includes(formatDate(d))) {
+                    ocupado = true;
+                    break;
+                }
+            }
+            if (ocupado) {
+                notificar('Alguna de las fechas seleccionadas ya no está disponible', true);
+                return;
+            }
+
+            // Si no hay usuario autenticado, mostramos modal de auth
+            if (!currentUser) {
+                // Abrir modal auth
+                modalAuth.classList.remove('hidden');
+                modalAuth.classList.add('flex');
+                authForm.classList.remove('hidden');
+                invitadoForm.classList.add('hidden');
+                // Guardamos el estado para que al autenticarse continúe
+                window.reservaPendiente = true;
+                return;
+            }
+
+            // Si hay usuario, obtenemos sus datos de perfil
+            const { data: perfil } = await supabase.from('perfiles').select('*').eq('id', currentUser.id).single();
+            if (!perfil) {
+                notificar('Perfil incompleto. Por favor completa tus datos.', true);
+                // Podríamos abrir un formulario, pero por ahora simplificamos
+                return;
+            }
+            await procesarReserva({
+                nombre: perfil.nombre,
+                apellido: perfil.apellido,
+                cedula: perfil.cedula,
+                telefono: perfil.telefono,
+                email: currentUser.email,
+                usuario_id: currentUser.id
+            });
+        });
+
+        async function procesarReserva(datosCliente) {
+            const checkInStr = formatDate(selectedCheckIn);
+            const checkOutStr = formatDate(selectedCheckOut);
+            const noches = Math.round((selectedCheckOut - selectedCheckIn) / (1000*60*60*24));
+            const total = noches * (propiedad.precio_noche || 100);
+            const adultos = parseInt(document.getElementById('adultosSelect').value);
+            const ninos = parseInt(document.getElementById('ninosSelect').value);
+
+            // Guardar en Supabase
+            const { data, error } = await supabase.from('reservas').insert({
+                propiedad_id: PROPIEDAD_ID,
+                usuario_id: datosCliente.usuario_id,
+                check_in: checkInStr,
+                check_out: checkOutStr,
+                adultos,
+                ninos,
+                total,
+                cliente_nombre: datosCliente.nombre,
+                cliente_apellido: datosCliente.apellido,
+                cliente_cedula: datosCliente.cedula,
+                cliente_telefono: datosCliente.telefono,
+                cliente_email: datosCliente.email
+            });
+            if (error) {
+                notificar('Error al guardar reserva: ' + error.message, true);
+                return;
+            }
 
             // Abrir WhatsApp
-            const formatDate = (d) => {
-                const day = d.getDate().toString().padStart(2,'0');
-                const month = (d.getMonth()+1).toString().padStart(2,'0');
-                return `${day}/${month}/2025`;
-            };
-            const msg = `Hola, quiero reservar la Casa en Playa El Ángel del ${formatDate(checkIn)} al ${formatDate(checkOut)} para ${adults+children} personas. El total estimado es de $${total.toFixed(2)}.`;
-            window.open(`https://wa.me/584248119014?text=${encodeURIComponent(msg)}`, '_blank');
-        } catch (error) {
-            console.error('Error guardando reserva:', error);
-            alert('Error al procesar la reserva. Intenta de nuevo.');
+            const mensaje = `Hola, quiero reservar la Casa en Playa El Ángel del ${checkInStr} al ${checkOutStr} para ${adultos+ninos} personas. El total estimado es de $${total}. Mis datos: ${datosCliente.nombre} ${datosCliente.apellido}, cédula ${datosCliente.cedula}, teléfono ${datosCliente.telefono}.`;
+            const url = `https://wa.me/${TELEFONO_ANFITRION}?text=${encodeURIComponent(mensaje)}`;
+            window.open(url, '_blank');
+
+            // Mostrar modal de confirmación
+            document.getElementById('modalConfirmacion').classList.remove('hidden');
+            document.getElementById('modalConfirmacion').classList.add('flex');
         }
-    }
+
+        document.getElementById('cerrarConfirmacion').addEventListener('click', ()=>{
+            document.getElementById('modalConfirmacion').classList.add('hidden');
+        });
+
+        // ==================== PANEL ADMIN ====================
+        let longPressTimer;
+        footer.addEventListener('touchstart', (e)=>{
+            longPressTimer = setTimeout(()=>{
+                let user = prompt('Usuario:');
+                if (user === 'mikedazs') {
+                    let pass = prompt('Contraseña:');
+                    if (pass === 'astroyluna') {
+                        isAdmin = true;
+                        publicView.classList.add('hidden');
+                        adminView.classList.remove('hidden');
+                        cargarTodo(); // recargar con datos para admin
+                    } else {
+                        alert('Contraseña incorrecta');
+                    }
+                } else {
+                    alert('Usuario incorrecto');
+                }
+            }, 1000);
+        });
+        footer.addEventListener('touchend', ()=> clearTimeout(longPressTimer));
+        footer.addEventListener('touchcancel', ()=> clearTimeout(longPressTimer));
+
+        salirAdminBtn.addEventListener('click', ()=>{
+            isAdmin = false;
+            publicView.classList.remove('hidden');
+            adminView.classList.add('hidden');
+        });
+
+        // Tabs admin
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const tabPanels = document.querySelectorAll('.tab-panel');
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', ()=>{
+                const tab = btn.dataset.tab;
+                tabBtns.forEach(b => b.classList.replace('border-black', 'border-transparent'));
+                btn.classList.add('border-black');
+                tabPanels.forEach(p => p.classList.add('hidden'));
+                document.getElementById(`tab${tab.charAt(0).toUpperCase()+tab.slice(1)}`).classList.remove('hidden');
+            });
+        });
+
+        // Renderizar paneles admin
+        async function renderAdminPanels() {
+            // Básico
+            document.getElementById('adminNombre').value = propiedad.nombre || '';
+            document.getElementById('adminUbicacion').value = propiedad.ubicacion || '';
+            document.getElementById('adminPrecio').value = propiedad.precio_noche || '';
+            document.getElementById('adminCapacidad').value = propiedad.capacidad_max || '';
+            document.getElementById('adminHabitaciones').value = propiedad.habitaciones || '';
+            document.getElementById('adminCamas').value = propiedad.camas || '';
+            document.getElementById('adminBanos').value = propiedad.banos || '';
+            document.getElementById('adminDescripcion').value = propiedad.descripcion || '';
+            document.getElementById('adminActiva').checked = propiedad.activa || false;
+
+            // Imágenes
+            const galeriaAdmin = document.getElementById('galeriaAdmin');
+            galeriaAdmin.innerHTML = '';
+            imagenes.forEach(img => {
+                const div = document.createElement('div');
+                div.className = 'relative';
+                div.innerHTML = `
+                    <img src="${img.url}" class="w-full h-32 object-cover rounded">
+                    <button data-id="${img.id}" class="eliminar-img absolute top-1 right-1 bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center"><i class="fas fa-trash"></i></button>
+                `;
+                galeriaAdmin.appendChild(div);
+            });
+            document.querySelectorAll('.eliminar-img').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const id = e.currentTarget.dataset.id;
+                    if (confirm('¿Eliminar imagen?')) {
+                        await supabase.from('imagenes').delete().eq('id', id);
+                        await cargarImagenes();
+                        renderAdminPanels();
+                    }
+                });
+            });
+
+            // Servicios checklist
+            const checklist = document.getElementById('serviciosChecklist');
+            checklist.innerHTML = '';
+            servicios.forEach(s => {
+                const checked = serviciosPropiedad.includes(s.id) ? 'checked' : '';
+                const div = document.createElement('div');
+                div.className = 'flex items-center gap-2';
+                div.innerHTML = `<input type="checkbox" data-id="${s.id}" ${checked} class="servicio-check"> <i class="${s.icono} w-6"></i> ${s.nombre}`;
+                checklist.appendChild(div);
+            });
+            document.querySelectorAll('.servicio-check').forEach(chk => {
+                chk.addEventListener('change', async (e) => {
+                    const servicioId = parseInt(e.target.dataset.id);
+                    if (e.target.checked) {
+                        await supabase.from('propiedad_servicios').insert({ propiedad_id: PROPIEDAD_ID, servicio_id: servicioId });
+                    } else {
+                        await supabase.from('propiedad_servicios').delete().eq('propiedad_id', PROPIEDAD_ID).eq('servicio_id', servicioId);
+                    }
+                    // recargar serviciosPropiedad
+                    const { data } = await supabase.from('propiedad_servicios').select('servicio_id').eq('propiedad_id', PROPIEDAD_ID);
+                    serviciosPropiedad = data.map(d => d.servicio_id);
+                });
+            });
+
+            // Reservas
+            const tbody = document.getElementById('tablaReservas');
+            tbody.innerHTML = '';
+            reservas.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${r.check_in}</td><td>${r.check_out}</td><td>${r.cliente_nombre} ${r.cliente_apellido}</td><td>${r.cliente_telefono}</td><td>$${r.total}</td>`;
+                tbody.appendChild(tr);
+            });
+
+            // Reseñas admin
+            const resenasAdmin = document.getElementById('listaResenasAdmin');
+            resenasAdmin.innerHTML = '';
+            const { data: todasResenas } = await supabase.from('resenas').select('*').eq('propiedad_id', PROPIEDAD_ID);
+            todasResenas.forEach(r => {
+                const div = document.createElement('div');
+                div.className = 'flex justify-between items-center border-b pb-2';
+                div.innerHTML = `
+                    <div>
+                        <p><strong>${r.nombre_cliente}</strong> (${r.calificacion}★) - ${r.fecha}</p>
+                        <p>${r.comentario}</p>
+                    </div>
+                    <button data-id="${r.id}" class="toggle-resena ${r.visible ? 'bg-green-500' : 'bg-gray-400'} text-white px-3 py-1 rounded text-sm">
+                        ${r.visible ? 'Ocultar' : 'Mostrar'}
+                    </button>
+                `;
+                resenasAdmin.appendChild(div);
+            });
+            document.querySelectorAll('.toggle-resena').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const id = e.target.dataset.id;
+                    const visible = e.target.innerText === 'Ocultar' ? false : true;
+                    await supabase.from('resenas').update({ visible }).eq('id', id);
+                    renderAdminPanels(); // recargar
+                });
+            });
+
+            // Bloqueos
+            const listaBloqueos = document.getElementById('listaBloqueos');
+            listaBloqueos.innerHTML = '';
+            bloqueos.forEach(b => {
+                const div = document.createElement('div');
+                div.className = 'flex justify-between items-center border p-2 rounded';
+                div.innerHTML = `
+                    <span>${b.fecha} - ${b.motivo || 'Sin motivo'}</span>
+                    <button data-id="${b.id}" class="eliminar-bloqueo text-red-500"><i class="fas fa-trash"></i></button>
+                `;
+                listaBloqueos.appendChild(div);
+            });
+            document.querySelectorAll('.eliminar-bloqueo').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const id = e.currentTarget.dataset.id;
+                    await supabase.from('bloqueos').delete().eq('id', id);
+                    await cargarBloqueos();
+                    renderAdminPanels();
+                });
+            });
+        }
+
+        // Guardar básico
+        document.getElementById('formBasico').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const updates = {
+                nombre: document.getElementById('adminNombre').value,
+                ubicacion: document.getElementById('adminUbicacion').value,
+                precio_noche: parseFloat(document.getElementById('adminPrecio').value),
+                capacidad_max: parseInt(document.getElementById('adminCapacidad').value),
+                habitaciones: parseInt(document.getElementById('adminHabitaciones').value),
+                camas: parseInt(document.getElementById('adminCamas').value),
+                banos: parseInt(document.getElementById('adminBanos').value),
+                descripcion: document.getElementById('adminDescripcion').value,
+                activa: document.getElementById('adminActiva').checked
+            };
+            await supabase.from('propiedades').update(updates).eq('id', PROPIEDAD_ID);
+            notificar('Propiedad actualizada');
+            await cargarPropiedad();
+        });
+
+        // Subir imágenes
+        document.getElementById('subirImagenesBtn').addEventListener('click', async () => {
+            const files = document.getElementById('uploadImagenes').files;
+            if (files.length === 0) return;
+            for (let file of files) {
+                const nombreUnico = `${Date.now()}_${file.name}`;
+                const { data, error } = await supabase.storage.from('imagenes').upload(nombreUnico, file);
+                if (error) {
+                    console.error(error);
+                    continue;
+                }
+                const url = supabase.storage.from('imagenes').getPublicUrl(nombreUnico).data.publicUrl;
+                await supabase.from('imagenes').insert({ propiedad_id: PROPIEDAD_ID, url, orden: 999 });
+            }
+            await cargarImagenes();
+            renderAdminPanels();
+        });
+
+        // Crear servicio
+        document.getElementById('crearServicioBtn').addEventListener('click', async () => {
+            const nombre = document.getElementById('nuevoServicioNombre').value;
+            const icono = document.getElementById('nuevoServicioIcono').value;
+            if (!nombre) return;
+            await supabase.from('servicios').insert({ nombre, icono });
+            await cargarServicios();
+            renderAdminPanels();
+        });
+
+        // Agregar bloqueo
+        document.getElementById('agregarBloqueoBtn').addEventListener('click', async () => {
+            const fecha = document.getElementById('bloqueoFecha').value;
+            const motivo = document.getElementById('bloqueoMotivo').value;
+            if (!fecha) return;
+            await supabase.from('bloqueos').insert({ propiedad_id: PROPIEDAD_ID, fecha, motivo });
+            await cargarBloqueos();
+            renderAdminPanels();
+        });
+
+        // ==================== INICIALIZACIÓN ====================
+        window.addEventListener('load', () => {
+            cargarTodo();
+        });
+    })();
 </script>
 </body>
 </html>
