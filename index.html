@@ -41,8 +41,10 @@
                 border-top-left-radius: 1rem;
                 border-top-right-radius: 1rem;
             }
+            body {
+                padding-bottom: 120px; /* espacio para la tarjeta fija */
+            }
         }
-        /* Transición suave para paneles */
         .tab-panel {
             transition: opacity 0.2s;
         }
@@ -50,9 +52,21 @@
 </head>
 <body class="bg-gray-50 font-sans antialiased">
 
+<!-- 
+    =====================================================
+    INSTRUCCIONES PARA CONFIGURAR SUPABASE:
+    1. Crear un proyecto en supabase.com
+    2. Ejecutar el script SQL que está al final de este archivo (en comentarios)
+    3. Crear un bucket público llamado 'imagenes' en Storage
+    4. Configurar políticas de seguridad (RLS) como se indica
+    5. Reemplazar TU_SUPABASE_URL y TU_SUPABASE_ANON_KEY con tus credenciales
+    6. Abrir este archivo en un servidor (puede ser local con Live Server)
+    =====================================================
+-->
+
 <div id="app" class="relative min-h-screen">
 
-    <!-- ==================== VISTA PÚBLICA (visible cuando no admin) ==================== -->
+    <!-- VISTA PÚBLICA (visible cuando no admin) -->
     <div id="publicView" class="pb-24 md:pb-0">
         <!-- HEADER -->
         <header class="bg-white shadow-sm sticky top-0 z-30">
@@ -120,9 +134,7 @@
                 <!-- Servicios -->
                 <div class="mb-8">
                     <h3 class="text-xl font-semibold mb-4">Servicios</h3>
-                    <div id="listaServicios" class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        <!-- se llena vía JS -->
-                    </div>
+                    <div id="listaServicios" class="grid grid-cols-2 md:grid-cols-3 gap-4"></div>
                 </div>
 
                 <!-- Fechas disponibles (modal) -->
@@ -136,15 +148,13 @@
                 <!-- Reseñas -->
                 <div class="mb-8">
                     <h3 class="text-xl font-semibold mb-4">Reseñas</h3>
-                    <div id="listaResenas" class="space-y-6">
-                        <!-- se llena vía JS -->
-                    </div>
+                    <div id="listaResenas" class="space-y-6"></div>
                 </div>
             </div>
 
             <!-- Columna derecha: tarjeta de reserva sticky -->
             <div class="md:col-span-1">
-                <div id="reservaCard" class="bg-white rounded-2xl shadow-xl p-6 md:sticky md:top-24 border">
+                <div id="reservaCard" class="bg-white rounded-2xl shadow-xl p-6 md:sticky md:top-24 border reserva-sticky-mobile">
                     <div class="flex justify-between items-center mb-4">
                         <span class="text-2xl font-semibold">$<span id="precioNoche">100</span></span>
                         <span class="text-gray-600">por noche</span>
@@ -174,7 +184,7 @@
                         <span>Total</span>
                         <span>$<span id="total">0</span></span>
                     </div>
-                    <button id="reservarBtn" class="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 transition disabled:bg-gray-300 disabled:cursor-not-allowed">
+                    <button id="reservarBtn" class="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 transition disabled:bg-gray-300 disabled:cursor-not-allowed" disabled>
                         Reservar
                     </button>
                 </div>
@@ -188,7 +198,7 @@
         </footer>
     </div>
 
-    <!-- ==================== VISTA ADMIN (oculta por defecto) ==================== -->
+    <!-- VISTA ADMIN (oculta por defecto) -->
     <div id="adminView" class="hidden bg-gray-100 min-h-screen">
         <div class="container mx-auto px-4 py-6">
             <div class="flex justify-between items-center mb-6">
@@ -213,7 +223,6 @@
             <!-- Contenido de los tabs -->
             <div id="tabBasico" class="tab-panel">
                 <form id="formBasico" class="bg-white rounded-xl p-6 shadow max-w-2xl">
-                    <!-- campos -->
                     <div class="grid grid-cols-2 gap-4">
                         <div><label>Nombre</label><input type="text" id="adminNombre" class="border p-2 w-full rounded"></div>
                         <div><label>Ubicación</label><input type="text" id="adminUbicacion" class="border p-2 w-full rounded"></div>
@@ -234,9 +243,7 @@
                     <h3 class="font-semibold mb-4">Subir nuevas imágenes</h3>
                     <input type="file" id="uploadImagenes" multiple accept="image/*" class="mb-4">
                     <button id="subirImagenesBtn" class="bg-black text-white px-4 py-2 rounded-lg mb-6">Subir seleccionadas</button>
-                    <div id="galeriaAdmin" class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <!-- se llena con JS -->
-                    </div>
+                    <div id="galeriaAdmin" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
                 </div>
             </div>
 
@@ -283,7 +290,7 @@
         </div>
     </div>
 
-    <!-- ==================== MODALES ==================== -->
+    <!-- MODALES -->
     <!-- Modal calendario -->
     <div id="modalCalendario" class="fixed inset-0 modal-overlay hidden items-center justify-center z-50">
         <div class="bg-white rounded-2xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
@@ -291,9 +298,7 @@
                 <h3 class="text-xl font-semibold">Selecciona fechas</h3>
                 <button id="cerrarCalendario" class="text-gray-500"><i class="fas fa-times"></i></button>
             </div>
-            <div id="calendarioContainer" class="grid grid-cols-7 gap-1 text-center">
-                <!-- se genera con JS -->
-            </div>
+            <div id="calendarioContainer" class="grid grid-cols-7 gap-1 text-center"></div>
             <div class="flex justify-end mt-6">
                 <button id="confirmarFechas" class="bg-black text-white px-6 py-2 rounded-lg">Confirmar</button>
             </div>
@@ -326,7 +331,7 @@
         </div>
     </div>
 
-    <!-- Modal de confirmación de reserva (simple) -->
+    <!-- Modal de confirmación de reserva -->
     <div id="modalConfirmacion" class="fixed inset-0 modal-overlay hidden items-center justify-center z-50">
         <div class="bg-white rounded-2xl p-6 max-w-sm w-full mx-4">
             <h3 class="text-xl font-semibold mb-4">Reserva enviada</h3>
@@ -334,13 +339,25 @@
             <button id="cerrarConfirmacion" class="mt-4 bg-black text-white px-4 py-2 w-full rounded">Aceptar</button>
         </div>
     </div>
+
+    <!-- Modal para completar datos de perfil (usuario autenticado) -->
+    <div id="modalCompletarPerfil" class="fixed inset-0 modal-overlay hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4">
+            <h3 class="text-xl font-semibold mb-4">Completa tus datos</h3>
+            <input type="text" id="perfilNombre" placeholder="Nombre" class="border p-2 w-full rounded mb-3">
+            <input type="text" id="perfilApellido" placeholder="Apellido" class="border p-2 w-full rounded mb-3">
+            <input type="text" id="perfilCedula" placeholder="Cédula" class="border p-2 w-full rounded mb-3">
+            <input type="tel" id="perfilTelefono" placeholder="Teléfono" class="border p-2 w-full rounded mb-3">
+            <button id="guardarPerfilBtn" class="bg-black text-white px-4 py-2 w-full rounded">Guardar y continuar</button>
+        </div>
+    </div>
 </div>
 
 <script>
     (function() {
         // ==================== CONFIGURACIÓN SUPABASE ====================
-        const SUPABASE_URL = 'https://aflnlhmlojfzrzfdpchz.supabase.co'; // <-- REEMPLAZAR
-        const SUPABASE_ANON_KEY = 'sb_publishable_epxLevdKzM7YI3GAXw2iSQ_jrbUuhzJ'; // <-- REEMPLAZAR
+        const SUPABASE_URL = 'https://tu-proyecto.supabase.co'; // <-- REEMPLAZAR
+        const SUPABASE_ANON_KEY = 'tu-anon-key'; // <-- REEMPLAZAR
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // ID de la propiedad que estamos gestionando (por ahora fijo)
@@ -351,47 +368,41 @@
 
         // ==================== ESTADO GLOBAL ====================
         let currentUser = null; // usuario autenticado (objeto de Supabase Auth)
+        let currentUserProfile = null; // perfil del usuario autenticado
         let isAdmin = false; // modo admin activado?
-        let propiedad = {}; // datos de la propiedad
-        let imagenes = []; // lista de imágenes {id, url, orden}
-        let servicios = []; // todos los servicios con checkbox
-        let serviciosPropiedad = []; // ids de servicios de la propiedad
-        let resenas = []; // reseñas de la propiedad
-        let reservas = []; // reservas (para admin)
-        let bloqueos = []; // fechas bloqueadas
-        let fechasOcupadas = []; // combinación de reservas confirmadas + bloqueos (como strings 'YYYY-MM-DD')
-        let selectedCheckIn = null; // Date
-        let selectedCheckOut = null; // Date
+        let propiedad = {};
+        let imagenes = [];
+        let servicios = [];
+        let serviciosPropiedad = [];
+        let resenas = [];
+        let reservas = [];
+        let bloqueos = [];
+        let fechasOcupadas = []; // fechas ocupadas como strings 'YYYY-MM-DD'
+        let selectedCheckIn = null; // Date (UTC mediodía)
+        let selectedCheckOut = null;
         let adultos = 2;
         let ninos = 0;
-        let imagenesCarrusel = []; // urls
+        let imagenesCarrusel = [];
         let currentCarruselIndex = 0;
 
-        // ==================== REFERENCIAS DOM ====================
-        const publicView = document.getElementById('publicView');
-        const adminView = document.getElementById('adminView');
-        const authBtn = document.getElementById('authBtn');
-        const footer = document.getElementById('footer');
-        const salirAdminBtn = document.getElementById('salirAdminBtn');
-
         // ==================== FUNCIONES AUXILIARES ====================
+        function parseDate(str) {
+            // Retorna un objeto Date a las 12:00 UTC para evitar problemas de zona horaria
+            const [y, m, d] = str.split('-');
+            return new Date(Date.UTC(y, m-1, d, 12, 0, 0));
+        }
         function formatDate(date) {
             return date.toISOString().split('T')[0];
         }
 
-        function parseDate(str) {
-            return new Date(str + 'T12:00:00'); // evita problemas de zona horaria
-        }
-
-        // Mostrar notificación simple (usamos alert por simplicidad, pero se puede mejorar)
         function notificar(mensaje, error = false) {
-            alert(mensaje);
+            alert((error ? '❌ ' : '✅ ') + mensaje);
         }
 
         // ==================== CARGAR DATOS DE SUPABASE ====================
         async function cargarPropiedad() {
             const { data, error } = await supabase.from('propiedades').select('*').eq('id', PROPIEDAD_ID).single();
-            if (error) console.error('Error cargando propiedad', error);
+            if (error) { console.error('Error cargando propiedad', error); notificar('Error al cargar propiedad', true); }
             else propiedad = data;
             actualizarUIPropiedad();
         }
@@ -440,7 +451,20 @@
             const { data, error } = await supabase.from('bloqueos').select('*').eq('propiedad_id', PROPIEDAD_ID);
             if (error) console.error(error);
             else bloqueos = data;
-            actualizarFechasOcupadas();
+        }
+
+        async function actualizarFechasOcupadas() {
+            fechasOcupadas = [];
+            reservas.forEach(r => {
+                let start = parseDate(r.check_in);
+                let end = parseDate(r.check_out);
+                for (let d = new Date(start); d < end; d.setUTCDate(d.getUTCDate() + 1)) {
+                    fechasOcupadas.push(formatDate(d));
+                }
+            });
+            bloqueos.forEach(b => {
+                fechasOcupadas.push(b.fecha);
+            });
         }
 
         async function cargarTodo() {
@@ -450,23 +474,10 @@
             await cargarResenas();
             await cargarReservas();
             await cargarBloqueos();
+            await actualizarFechasOcupadas();
             if (isAdmin) {
                 renderAdminPanels();
             }
-        }
-
-        function actualizarFechasOcupadas() {
-            fechasOcupadas = [];
-            reservas.forEach(r => {
-                let start = parseDate(r.check_in);
-                let end = parseDate(r.check_out);
-                for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
-                    fechasOcupadas.push(formatDate(d));
-                }
-            });
-            bloqueos.forEach(b => {
-                fechasOcupadas.push(b.fecha);
-            });
         }
 
         // ==================== UI PÚBLICA ====================
@@ -558,21 +569,20 @@
         currentMonth.setDate(1);
 
         function generarCalendario() {
-            const year = currentMonth.getFullYear();
-            const month = currentMonth.getMonth();
-            const primerDia = new Date(year, month, 1);
-            const ultimoDia = new Date(year, month+1, 0);
-            const diasEnMes = ultimoDia.getDate();
+            const year = currentMonth.getUTCFullYear();
+            const month = currentMonth.getUTCMonth();
+            const primerDia = new Date(Date.UTC(year, month, 1));
+            const ultimoDia = new Date(Date.UTC(year, month+1, 0));
+            const diasEnMes = ultimoDia.getUTCDate();
             let html = '';
-            // Días de la semana
             const diasSemana = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'];
             diasSemana.forEach(d => html += `<div class="font-semibold text-sm">${d}</div>`);
 
-            // Espacios vacíos antes del primer día
-            for (let i=0; i<primerDia.getDay(); i++) html += '<div></div>';
+            // Ajuste: primerDia.getUTCDay() da el día de la semana (0=domingo)
+            for (let i = 0; i < primerDia.getUTCDay(); i++) html += '<div></div>';
 
-            for (let d=1; d<=diasEnMes; d++) {
-                const fecha = new Date(year, month, d);
+            for (let d = 1; d <= diasEnMes; d++) {
+                const fecha = new Date(Date.UTC(year, month, d, 12));
                 const fechaStr = formatDate(fecha);
                 const ocupado = fechasOcupadas.includes(fechaStr);
                 const seleccionado = (selectedCheckIn && formatDate(selectedCheckIn) === fechaStr) || (selectedCheckOut && formatDate(selectedCheckOut) === fechaStr);
@@ -585,38 +595,55 @@
             }
             calendarioContainer.innerHTML = html;
 
-            // Event listeners a los días
             document.querySelectorAll('.calendario-dia:not(.ocupado)').forEach(el => {
                 el.addEventListener('click', (e) => {
                     const fechaStr = e.target.dataset.fecha;
                     const fecha = parseDate(fechaStr);
                     if (!selectedCheckIn || (selectedCheckIn && selectedCheckOut)) {
-                        // empezar nueva selección
                         selectedCheckIn = fecha;
                         selectedCheckOut = null;
                     } else if (selectedCheckIn && !selectedCheckOut) {
                         if (fecha <= selectedCheckIn) {
                             selectedCheckIn = fecha;
                         } else {
-                            // Verificar que no haya ocupados en medio
-                            let hayOcupado = false;
-                            for (let d = new Date(selectedCheckIn); d <= fecha; d.setDate(d.getDate()+1)) {
-                                if (fechasOcupadas.includes(formatDate(d))) {
-                                    hayOcupado = true;
-                                    break;
+                            // Verificar disponibilidad del rango
+                            rangoDisponible(selectedCheckIn, fecha).then(disponible => {
+                                if (disponible) {
+                                    selectedCheckOut = fecha;
+                                } else {
+                                    notificar('Hay fechas ocupadas en el rango seleccionado', true);
                                 }
-                            }
-                            if (hayOcupado) {
-                                notificar('Hay fechas ocupadas en el medio', true);
-                            } else {
-                                selectedCheckOut = fecha;
-                            }
+                                generarCalendario();
+                                actualizarResumenFechas();
+                            });
+                            return; // evitar doble render
                         }
                     }
-                    generarCalendario(); // redibujar
+                    generarCalendario();
                     actualizarResumenFechas();
                 });
             });
+        }
+
+        async function rangoDisponible(checkIn, checkOut) {
+            const checkInStr = formatDate(checkIn);
+            const checkOutStr = formatDate(checkOut);
+            // Verificar reservas que se solapen
+            const { data: reservasOcupadas } = await supabase
+                .from('reservas')
+                .select('*')
+                .eq('propiedad_id', PROPIEDAD_ID)
+                .or(`check_in.lt.${checkOutStr},check_out.gt.${checkInStr}`);
+            if (reservasOcupadas && reservasOcupadas.length > 0) return false;
+            // Verificar bloqueos en el rango
+            const { data: bloqueosRango } = await supabase
+                .from('bloqueos')
+                .select('*')
+                .eq('propiedad_id', PROPIEDAD_ID)
+                .gte('fecha', checkInStr)
+                .lt('fecha', checkOutStr);
+            if (bloqueosRango && bloqueosRango.length > 0) return false;
+            return true;
         }
 
         function actualizarResumenFechas() {
@@ -631,6 +658,8 @@
                 document.getElementById('checkOutDisplay').innerText = '';
             }
             calcularTotal();
+            // Habilitar/deshabilitar botón reservar
+            document.getElementById('reservarBtn').disabled = !(selectedCheckIn && selectedCheckOut);
         }
 
         function calcularTotal() {
@@ -640,7 +669,7 @@
                 const precio = propiedad.precio_noche || 100;
                 const subtotal = noches * precio;
                 document.getElementById('subtotal').innerText = subtotal;
-                document.getElementById('total').innerText = subtotal; // sin limpieza? según mensaje: limpieza 30$ pago único, pero no lo incluimos en el cálculo? Lo dejamos simple.
+                document.getElementById('total').innerText = subtotal;
             } else {
                 document.getElementById('nochesCount').innerText = '0';
                 document.getElementById('subtotal').innerText = '0';
@@ -661,6 +690,11 @@
             actualizarResumenFechas();
         });
 
+        // Cerrar modal al hacer clic fuera
+        modalCalendario.addEventListener('click', (e) => {
+            if (e.target === modalCalendario) modalCalendario.classList.add('hidden');
+        });
+
         // ==================== AUTENTICACIÓN Y MODALES ====================
         const modalAuth = document.getElementById('modalAuth');
         const authForm = document.getElementById('authForm');
@@ -670,6 +704,8 @@
         const invitadoBtn = document.getElementById('invitadoBtn');
         const cerrarAuth = document.getElementById('cerrarAuth');
         const confirmarInvitado = document.getElementById('confirmarInvitado');
+        const modalCompletarPerfil = document.getElementById('modalCompletarPerfil');
+        const guardarPerfilBtn = document.getElementById('guardarPerfilBtn');
 
         authBtn.addEventListener('click', ()=>{
             modalAuth.classList.remove('hidden');
@@ -679,6 +715,7 @@
         });
 
         cerrarAuth.addEventListener('click', ()=> modalAuth.classList.add('hidden'));
+        modalAuth.addEventListener('click', (e) => { if (e.target === modalAuth) modalAuth.classList.add('hidden'); });
 
         loginBtn.addEventListener('click', async ()=>{
             const email = document.getElementById('authEmail').value;
@@ -688,10 +725,17 @@
                 notificar('Error: ' + error.message, true);
             } else {
                 currentUser = data.user;
+                // Cargar perfil
+                const { data: perfil } = await supabase.from('perfiles').select('*').eq('id', currentUser.id).single();
+                currentUserProfile = perfil;
                 notificar('Sesión iniciada');
                 modalAuth.classList.add('hidden');
-                // Recargar datos si es necesario? No, pero actualizar UI de botón
                 authBtn.innerHTML = '<i class="fas fa-user mr-1"></i> ' + (currentUser.email || 'Usuario');
+                // Si hay una reserva pendiente, continuar
+                if (window.reservaPendiente) {
+                    window.reservaPendiente = false;
+                    await verificarPerfilYReservar();
+                }
             }
         });
 
@@ -704,11 +748,16 @@
                 notificar('Error: ' + error.message, true);
             } else {
                 currentUser = data.user;
-                // Crear perfil vacío (luego se completará con datos al reservar)
+                // Crear perfil vacío
                 await supabase.from('perfiles').insert({ id: currentUser.id, nombre: '', apellido: '', cedula: '', telefono: '' });
+                currentUserProfile = { id: currentUser.id, nombre: '', apellido: '', cedula: '', telefono: '' };
                 notificar('Registro exitoso. Tu contraseña es 1234');
                 modalAuth.classList.add('hidden');
                 authBtn.innerHTML = '<i class="fas fa-user mr-1"></i> ' + currentUser.email;
+                if (window.reservaPendiente) {
+                    window.reservaPendiente = false;
+                    await verificarPerfilYReservar();
+                }
             }
         });
 
@@ -717,7 +766,6 @@
             invitadoForm.classList.remove('hidden');
         });
 
-        // Al confirmar invitado, se guardan los datos y se procede a reservar
         confirmarInvitado.addEventListener('click', async ()=>{
             const nombre = document.getElementById('invitadoNombre').value;
             const apellido = document.getElementById('invitadoApellido').value;
@@ -728,52 +776,50 @@
                 notificar('Todos los campos son obligatorios', true);
                 return;
             }
-            // Proceder a reservar con datos de invitado
             await procesarReserva({ nombre, apellido, cedula, telefono, email, usuario_id: null });
             modalAuth.classList.add('hidden');
         });
 
-        // ==================== PROCESO DE RESERVA ====================
-        document.getElementById('reservarBtn').addEventListener('click', async ()=>{
-            if (!selectedCheckIn || !selectedCheckOut) {
-                notificar('Selecciona fechas de entrada y salida', true);
-                return;
-            }
-            // Verificar disponibilidad nuevamente
-            const checkInStr = formatDate(selectedCheckIn);
-            const checkOutStr = formatDate(selectedCheckOut);
-            // Comprobar si alguna fecha en el rango está ocupada
-            let ocupado = false;
-            for (let d = new Date(selectedCheckIn); d < selectedCheckOut; d.setDate(d.getDate()+1)) {
-                if (fechasOcupadas.includes(formatDate(d))) {
-                    ocupado = true;
-                    break;
-                }
-            }
-            if (ocupado) {
-                notificar('Alguna de las fechas seleccionadas ya no está disponible', true);
-                return;
-            }
-
-            // Si no hay usuario autenticado, mostramos modal de auth
-            if (!currentUser) {
-                // Abrir modal auth
-                modalAuth.classList.remove('hidden');
-                modalAuth.classList.add('flex');
-                authForm.classList.remove('hidden');
-                invitadoForm.classList.add('hidden');
-                // Guardamos el estado para que al autenticarse continúe
-                window.reservaPendiente = true;
-                return;
-            }
-
-            // Si hay usuario, obtenemos sus datos de perfil
+        // Función para verificar si el perfil está completo y reservar
+        async function verificarPerfilYReservar() {
+            if (!currentUser) return;
             const { data: perfil } = await supabase.from('perfiles').select('*').eq('id', currentUser.id).single();
-            if (!perfil) {
-                notificar('Perfil incompleto. Por favor completa tus datos.', true);
-                // Podríamos abrir un formulario, pero por ahora simplificamos
+            if (!perfil || !perfil.nombre || !perfil.apellido || !perfil.cedula || !perfil.telefono) {
+                // Mostrar modal para completar perfil
+                modalCompletarPerfil.classList.remove('hidden');
+                modalCompletarPerfil.classList.add('flex');
+                // Rellenar campos si existen
+                document.getElementById('perfilNombre').value = perfil?.nombre || '';
+                document.getElementById('perfilApellido').value = perfil?.apellido || '';
+                document.getElementById('perfilCedula').value = perfil?.cedula || '';
+                document.getElementById('perfilTelefono').value = perfil?.telefono || '';
                 return;
             }
+            // Perfil completo, proceder
+            await procesarReserva({
+                nombre: perfil.nombre,
+                apellido: perfil.apellido,
+                cedula: perfil.cedula,
+                telefono: perfil.telefono,
+                email: currentUser.email,
+                usuario_id: currentUser.id
+            });
+        }
+
+        guardarPerfilBtn.addEventListener('click', async ()=>{
+            const nombre = document.getElementById('perfilNombre').value;
+            const apellido = document.getElementById('perfilApellido').value;
+            const cedula = document.getElementById('perfilCedula').value;
+            const telefono = document.getElementById('perfilTelefono').value;
+            if (!nombre || !apellido || !cedula || !telefono) {
+                notificar('Todos los campos son obligatorios', true);
+                return;
+            }
+            await supabase.from('perfiles').update({ nombre, apellido, cedula, telefono }).eq('id', currentUser.id);
+            modalCompletarPerfil.classList.add('hidden');
+            // Volver a cargar perfil y continuar reserva
+            const { data: perfil } = await supabase.from('perfiles').select('*').eq('id', currentUser.id).single();
+            currentUserProfile = perfil;
             await procesarReserva({
                 nombre: perfil.nombre,
                 apellido: perfil.apellido,
@@ -784,6 +830,36 @@
             });
         });
 
+        // ==================== PROCESO DE RESERVA ====================
+        document.getElementById('reservarBtn').addEventListener('click', async ()=>{
+            if (!selectedCheckIn || !selectedCheckOut) {
+                notificar('Selecciona fechas de entrada y salida', true);
+                return;
+            }
+            // Verificar disponibilidad nuevamente (por si cambió)
+            if (!(await rangoDisponible(selectedCheckIn, selectedCheckOut))) {
+                notificar('Las fechas seleccionadas ya no están disponibles', true);
+                // Recargar ocupadas
+                await cargarReservas();
+                await cargarBloqueos();
+                await actualizarFechasOcupadas();
+                generarCalendario();
+                return;
+            }
+
+            if (!currentUser) {
+                // Mostrar modal de autenticación y marcar reserva pendiente
+                window.reservaPendiente = true;
+                modalAuth.classList.remove('hidden');
+                modalAuth.classList.add('flex');
+                authForm.classList.remove('hidden');
+                invitadoForm.classList.add('hidden');
+                return;
+            }
+
+            await verificarPerfilYReservar();
+        });
+
         async function procesarReserva(datosCliente) {
             const checkInStr = formatDate(selectedCheckIn);
             const checkOutStr = formatDate(selectedCheckOut);
@@ -792,8 +868,7 @@
             const adultos = parseInt(document.getElementById('adultosSelect').value);
             const ninos = parseInt(document.getElementById('ninosSelect').value);
 
-            // Guardar en Supabase
-            const { data, error } = await supabase.from('reservas').insert({
+            const { error } = await supabase.from('reservas').insert({
                 propiedad_id: PROPIEDAD_ID,
                 usuario_id: datosCliente.usuario_id,
                 check_in: checkInStr,
@@ -812,12 +887,10 @@
                 return;
             }
 
-            // Abrir WhatsApp
             const mensaje = `Hola, quiero reservar la Casa en Playa El Ángel del ${checkInStr} al ${checkOutStr} para ${adultos+ninos} personas. El total estimado es de $${total}. Mis datos: ${datosCliente.nombre} ${datosCliente.apellido}, cédula ${datosCliente.cedula}, teléfono ${datosCliente.telefono}.`;
             const url = `https://wa.me/${TELEFONO_ANFITRION}?text=${encodeURIComponent(mensaje)}`;
             window.open(url, '_blank');
 
-            // Mostrar modal de confirmación
             document.getElementById('modalConfirmacion').classList.remove('hidden');
             document.getElementById('modalConfirmacion').classList.add('flex');
         }
@@ -825,29 +898,43 @@
         document.getElementById('cerrarConfirmacion').addEventListener('click', ()=>{
             document.getElementById('modalConfirmacion').classList.add('hidden');
         });
+        document.getElementById('modalConfirmacion').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('modalConfirmacion')) {
+                document.getElementById('modalConfirmacion').classList.add('hidden');
+            }
+        });
 
         // ==================== PANEL ADMIN ====================
         let longPressTimer;
-        footer.addEventListener('touchstart', (e)=>{
-            longPressTimer = setTimeout(()=>{
-                let user = prompt('Usuario:');
-                if (user === 'mikedazs') {
-                    let pass = prompt('Contraseña:');
-                    if (pass === 'astroyluna') {
-                        isAdmin = true;
-                        publicView.classList.add('hidden');
-                        adminView.classList.remove('hidden');
-                        cargarTodo(); // recargar con datos para admin
+        let touchMoved = false;
+
+        footer.addEventListener('touchstart', (e) => {
+            touchMoved = false;
+            longPressTimer = setTimeout(() => {
+                if (!touchMoved) {
+                    let user = prompt('Usuario:');
+                    if (user === 'mikedazs') {
+                        let pass = prompt('Contraseña:');
+                        if (pass === 'astroyluna') {
+                            isAdmin = true;
+                            publicView.classList.add('hidden');
+                            adminView.classList.remove('hidden');
+                            cargarTodo(); // recargar con datos para admin
+                        } else {
+                            alert('Contraseña incorrecta');
+                        }
                     } else {
-                        alert('Contraseña incorrecta');
+                        alert('Usuario incorrecto');
                     }
-                } else {
-                    alert('Usuario incorrecto');
                 }
             }, 1000);
         });
-        footer.addEventListener('touchend', ()=> clearTimeout(longPressTimer));
-        footer.addEventListener('touchcancel', ()=> clearTimeout(longPressTimer));
+        footer.addEventListener('touchmove', () => {
+            touchMoved = true;
+            clearTimeout(longPressTimer);
+        });
+        footer.addEventListener('touchend', () => clearTimeout(longPressTimer));
+        footer.addEventListener('touchcancel', () => clearTimeout(longPressTimer));
 
         salirAdminBtn.addEventListener('click', ()=>{
             isAdmin = false;
@@ -861,8 +948,9 @@
         tabBtns.forEach(btn => {
             btn.addEventListener('click', ()=>{
                 const tab = btn.dataset.tab;
-                tabBtns.forEach(b => b.classList.replace('border-black', 'border-transparent'));
-                btn.classList.add('border-black');
+                tabBtns.forEach(b => b.classList.remove('border-black', 'text-black'));
+                tabBtns.forEach(b => b.classList.add('text-gray-500'));
+                btn.classList.add('border-black', 'text-black');
                 tabPanels.forEach(p => p.classList.add('hidden'));
                 document.getElementById(`tab${tab.charAt(0).toUpperCase()+tab.slice(1)}`).classList.remove('hidden');
             });
@@ -922,7 +1010,6 @@
                     } else {
                         await supabase.from('propiedad_servicios').delete().eq('propiedad_id', PROPIEDAD_ID).eq('servicio_id', servicioId);
                     }
-                    // recargar serviciosPropiedad
                     const { data } = await supabase.from('propiedad_servicios').select('servicio_id').eq('propiedad_id', PROPIEDAD_ID);
                     serviciosPropiedad = data.map(d => d.servicio_id);
                 });
@@ -941,20 +1028,22 @@
             const resenasAdmin = document.getElementById('listaResenasAdmin');
             resenasAdmin.innerHTML = '';
             const { data: todasResenas } = await supabase.from('resenas').select('*').eq('propiedad_id', PROPIEDAD_ID);
-            todasResenas.forEach(r => {
-                const div = document.createElement('div');
-                div.className = 'flex justify-between items-center border-b pb-2';
-                div.innerHTML = `
-                    <div>
-                        <p><strong>${r.nombre_cliente}</strong> (${r.calificacion}★) - ${r.fecha}</p>
-                        <p>${r.comentario}</p>
-                    </div>
-                    <button data-id="${r.id}" class="toggle-resena ${r.visible ? 'bg-green-500' : 'bg-gray-400'} text-white px-3 py-1 rounded text-sm">
-                        ${r.visible ? 'Ocultar' : 'Mostrar'}
-                    </button>
-                `;
-                resenasAdmin.appendChild(div);
-            });
+            if (todasResenas) {
+                todasResenas.forEach(r => {
+                    const div = document.createElement('div');
+                    div.className = 'flex justify-between items-center border-b pb-2';
+                    div.innerHTML = `
+                        <div>
+                            <p><strong>${r.nombre_cliente}</strong> (${r.calificacion}★) - ${r.fecha}</p>
+                            <p>${r.comentario}</p>
+                        </div>
+                        <button data-id="${r.id}" class="toggle-resena ${r.visible ? 'bg-green-500' : 'bg-gray-400'} text-white px-3 py-1 rounded text-sm">
+                            ${r.visible ? 'Ocultar' : 'Mostrar'}
+                        </button>
+                    `;
+                    resenasAdmin.appendChild(div);
+                });
+            }
             document.querySelectorAll('.toggle-resena').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     const id = e.target.dataset.id;
@@ -1010,10 +1099,11 @@
             const files = document.getElementById('uploadImagenes').files;
             if (files.length === 0) return;
             for (let file of files) {
-                const nombreUnico = `${Date.now()}_${file.name}`;
-                const { data, error } = await supabase.storage.from('imagenes').upload(nombreUnico, file);
+                const nombreUnico = `${Date.now()}_${Math.random().toString(36).substring(2)}_${file.name}`;
+                const { error } = await supabase.storage.from('imagenes').upload(nombreUnico, file);
                 if (error) {
                     console.error(error);
+                    notificar('Error al subir ' + file.name, true);
                     continue;
                 }
                 const url = supabase.storage.from('imagenes').getPublicUrl(nombreUnico).data.publicUrl;
@@ -1021,6 +1111,7 @@
             }
             await cargarImagenes();
             renderAdminPanels();
+            notificar('Imágenes subidas');
         });
 
         // Crear servicio
@@ -1049,5 +1140,115 @@
         });
     })();
 </script>
+
+<!-- 
+    =====================================================
+    SCRIPT SQL PARA CREAR LAS TABLAS EN SUPABASE
+    (Ejecutar en el editor SQL de Supabase)
+    =====================================================
+
+CREATE TABLE propiedades (
+  id SERIAL PRIMARY KEY,
+  nombre TEXT NOT NULL,
+  ubicacion TEXT,
+  descripcion TEXT,
+  precio_noche DECIMAL(10,2) NOT NULL,
+  capacidad_max INT,
+  habitaciones INT,
+  camas INT,
+  banos INT,
+  imagen_portada TEXT,
+  activa BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE servicios (
+  id SERIAL PRIMARY KEY,
+  nombre TEXT NOT NULL,
+  icono TEXT
+);
+
+CREATE TABLE propiedad_servicios (
+  propiedad_id INT REFERENCES propiedades(id) ON DELETE CASCADE,
+  servicio_id INT REFERENCES servicios(id) ON DELETE CASCADE,
+  PRIMARY KEY (propiedad_id, servicio_id)
+);
+
+CREATE TABLE imagenes (
+  id SERIAL PRIMARY KEY,
+  propiedad_id INT REFERENCES propiedades(id) ON DELETE CASCADE,
+  url TEXT NOT NULL,
+  orden INT DEFAULT 0
+);
+
+CREATE TABLE perfiles (
+  id UUID REFERENCES auth.users(id) PRIMARY KEY,
+  nombre TEXT,
+  apellido TEXT,
+  cedula TEXT,
+  telefono TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE reservas (
+  id SERIAL PRIMARY KEY,
+  propiedad_id INT REFERENCES propiedades(id) ON DELETE CASCADE,
+  usuario_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  check_in DATE NOT NULL,
+  check_out DATE NOT NULL,
+  adultos INT NOT NULL,
+  ninos INT DEFAULT 0,
+  total DECIMAL(10,2) NOT NULL,
+  cliente_nombre TEXT,
+  cliente_apellido TEXT,
+  cliente_cedula TEXT,
+  cliente_telefono TEXT,
+  cliente_email TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE resenas (
+  id SERIAL PRIMARY KEY,
+  propiedad_id INT REFERENCES propiedades(id) ON DELETE CASCADE,
+  usuario_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  nombre_cliente TEXT NOT NULL,
+  avatar_url TEXT,
+  calificacion INT CHECK (calificacion >= 1 AND calificacion <= 5),
+  comentario TEXT,
+  fecha DATE DEFAULT CURRENT_DATE,
+  visible BOOLEAN DEFAULT true
+);
+
+CREATE TABLE bloqueos (
+  id SERIAL PRIMARY KEY,
+  propiedad_id INT REFERENCES propiedades(id) ON DELETE CASCADE,
+  fecha DATE NOT NULL,
+  motivo TEXT
+);
+
+INSERT INTO servicios (nombre, icono) VALUES
+('Cocina', 'fas fa-utensils'),
+('WiFi', 'fas fa-wifi'),
+('Aire acondicionado', 'fas fa-wind'),
+('Estacionamiento', 'fas fa-parking'),
+('Mascotas permitidas', 'fas fa-dog'),
+('TV', 'fas fa-tv'),
+('Piscina', 'fas fa-swimmer'),
+('Lavadora', 'fas fa-tshirt');
+
+-- Insertar propiedad de ejemplo
+INSERT INTO propiedades (nombre, ubicacion, descripcion, precio_noche, capacidad_max, habitaciones, camas, banos, activa)
+VALUES (
+  'Villas Pan de Azúcar en Pampatar',
+  'Isla de Margarita, Venezuela',
+  'Una hermosa casa townhouse en un exclusivo conjunto cerrado, ideal para disfrutar en familia o con amigos. Cuenta con sala, comedor, cocina integrada, 3 habitaciones, 2 baños, aire acondicionado, WiFi, lavadora, estacionamiento privado y seguridad 24h.',
+  100,
+  6,
+  3,
+  4,
+  2,
+  true
+);
+-->
 </body>
 </html>
