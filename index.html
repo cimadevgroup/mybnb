@@ -52,18 +52,6 @@
 </head>
 <body class="bg-gray-50 font-sans antialiased">
 
-<!-- 
-    =====================================================
-    INSTRUCCIONES PARA CONFIGURAR SUPABASE:
-    1. Crear un proyecto en supabase.com
-    2. Ejecutar el script SQL que está al final de este archivo (en comentarios)
-    3. Crear un bucket público llamado 'imagenes' en Storage
-    4. Configurar políticas de seguridad (RLS) como se indica
-    5. Reemplazar TU_SUPABASE_URL y TU_SUPABASE_ANON_KEY con tus credenciales
-    6. Abrir este archivo en un servidor (puede ser local con Live Server)
-    =====================================================
--->
-
 <div id="app" class="relative min-h-screen">
 
     <!-- VISTA PÚBLICA (visible cuando no admin) -->
@@ -357,8 +345,22 @@
     (function() {
         // ==================== CONFIGURACIÓN SUPABASE ====================
         const SUPABASE_URL = 'https://aflnlhmlojfzrzfdpchz.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFmbG5saG1sb2pmenJ6ZmRwY2h6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDM5OTAsImV4cCI6MjA4OTQxOTk5MH0.ZeU446Jg6atUFHeaWhk0pCmQbYxK6ERucxWqA62wdvg';    
+        // IMPORTANTE: Usamos la clave legacy anon (la larga) que SÍ funciona con RLS
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFmbG5saG1sb2pmenJ6ZmRwY2h6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDM5OTAsImV4cCI6MjA4OTQxOTk5MH0.ZeU446Jg6atUFHeaWhk0pCmQbYxK6ERucxWqA62wdvg';
+        
+        // Verificación de que la librería está cargada
+        if (!window.supabase) {
+            console.error('¡La librería Supabase no se cargó! Verifica la conexión a internet y el script.');
+        } else {
+            console.log('Librería Supabase cargada correctamente.');
+        }
+        
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // Logs para depuración (puedes borrarlos después)
+        console.log('Cliente Supabase creado:', supabase ? 'Sí' : 'No');
+        console.log('URL:', SUPABASE_URL);
+        console.log('KEY (primeros 20):', SUPABASE_ANON_KEY.substring(0,20) + '...');
 
         // ID de la propiedad que estamos gestionando (por ahora fijo)
         const PROPIEDAD_ID = 1;
@@ -401,10 +403,19 @@
 
         // ==================== CARGAR DATOS DE SUPABASE ====================
         async function cargarPropiedad() {
-            const { data, error } = await supabase.from('propiedades').select('*').eq('id', PROPIEDAD_ID).single();
-            if (error) { console.error('Error cargando propiedad', error); notificar('Error al cargar propiedad', true); }
-            else propiedad = data;
-            actualizarUIPropiedad();
+            try {
+                const { data, error } = await supabase.from('propiedades').select('*').eq('id', PROPIEDAD_ID).single();
+                if (error) { 
+                    console.error('Error cargando propiedad', error); 
+                    notificar('Error al cargar propiedad: ' + error.message, true); 
+                } else {
+                    propiedad = data;
+                    actualizarUIPropiedad();
+                }
+            } catch (e) {
+                console.error('Excepción en cargarPropiedad:', e);
+                notificar('Error de conexión con Supabase', true);
+            }
         }
 
         async function cargarImagenes() {
