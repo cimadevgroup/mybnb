@@ -8,10 +8,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Supabase JS (versión 2, la más reciente) -->
+    <!-- Supabase JS (versión 2) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* Estilos (igual que antes) */
         .calendario-dia {
             @apply w-10 h-10 flex items-center justify-center rounded-full cursor-pointer transition;
         }
@@ -207,7 +206,7 @@
                 </nav>
             </div>
 
-            <!-- Contenido de los tabs (igual que antes) -->
+            <!-- Contenido de los tabs -->
             <div id="tabBasico" class="tab-panel">
                 <form id="formBasico" class="bg-white rounded-xl p-6 shadow max-w-2xl">
                     <div class="grid grid-cols-2 gap-4">
@@ -277,7 +276,7 @@
         </div>
     </div>
 
-    <!-- MODALES (calendario, auth, etc.) -->
+    <!-- MODALES -->
     <div id="modalCalendario" class="fixed inset-0 modal-overlay hidden items-center justify-center z-50">
         <div class="bg-white rounded-2xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4">
@@ -338,22 +337,21 @@
 
 <script>
     (function() {
-        // ==================== CONFIGURACIÓN SUPABASE (CON LA CLAVE QUE TÚ ME DISTE) ====================
+        // ==================== CONFIGURACIÓN SUPABASE ====================
         const SUPABASE_URL = 'https://aflnlhmlojfzrzfdpchz.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_epxLevdKzM7YI3GAXw2iSQ_jrbUuhzJ'; // Esta es la publishable key
+        const SUPABASE_ANON_KEY = 'sb_publishable_epxLevdKzM7YI3GAXw2iSQ_jrbUuhzJ';
         
         // Verificar que la librería se cargó
-        if (typeof supabase === 'undefined') {
+        if (typeof window.supabase === 'undefined') {
             console.error('La librería Supabase no se cargó. Revisa la conexión a internet o el CDN.');
             alert('Error crítico: No se pudo cargar la librería de Supabase. La página no funcionará correctamente.');
-        } else {
-            console.log('Librería Supabase cargada. Creando cliente...');
+            return; // Detener ejecución
         }
         
-        // Crear cliente con opciones explícitas para asegurar que se envíe la clave
+        // Crear cliente con opciones explícitas
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
             auth: {
-                persistSession: false, // No necesitamos sesión para leer datos públicos
+                persistSession: false,
                 autoRefreshToken: false,
                 detectSessionInUrl: false
             },
@@ -368,7 +366,7 @@
         console.log('Cliente creado. URL:', SUPABASE_URL);
         console.log('Clave (primeros 10):', SUPABASE_ANON_KEY.substring(0,10) + '...');
 
-        // ==================== RESTO DEL CÓDIGO (igual que antes, pero con la clave correcta) ====================
+        // ==================== RESTO DEL CÓDIGO (igual que antes, pero con supabase ya definido) ====================
         const PROPIEDAD_ID = 1;
         const TELEFONO_ANFITRION = '+584248119014';
 
@@ -695,7 +693,7 @@
             if (e.target === modalCalendario) modalCalendario.classList.add('hidden');
         });
 
-        // AUTENTICACIÓN (omitida por brevedad, pero en el código completo está)
+        // ==================== AUTENTICACIÓN Y MODALES ====================
         const modalAuth = document.getElementById('modalAuth');
         const authForm = document.getElementById('authForm');
         const invitadoForm = document.getElementById('invitadoForm');
@@ -822,6 +820,7 @@
             });
         });
 
+        // ==================== PROCESO DE RESERVA ====================
         document.getElementById('reservarBtn').addEventListener('click', async ()=>{
             if (!selectedCheckIn || !selectedCheckOut) {
                 notificar('Selecciona fechas de entrada y salida', true);
@@ -892,7 +891,7 @@
             }
         });
 
-        // PANEL ADMIN (simplificado, pero funcional)
+        // ==================== PANEL ADMIN ====================
         let longPressTimer;
         let touchMoved = false;
 
@@ -1116,12 +1115,6 @@
     })();
 </script>
 
-<!-- 
-    =====================================================
-    SCRIPT SQL PARA CREAR LAS TABLAS EN SUPABASE
-    (Ejecutar en el editor SQL de Supabase)
-    =====================================================
-    (Aquí va el script SQL completo, igual que antes)
--->
+<!-- Script SQL (solo para referencia, no ejecutar aquí) -->
 </body>
 </html>
